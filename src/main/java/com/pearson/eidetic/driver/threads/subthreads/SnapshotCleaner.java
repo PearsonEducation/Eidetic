@@ -40,7 +40,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
 
-    private Boolean isFinished_ = null;
+    private Boolean isFinished_ = false;
     private AwsAccount awsAccount_ = null;
     private Integer eideticCleanKeepDays_ = null;
     private Integer allSnapshotCleanKeepDays_ = null;
@@ -69,13 +69,13 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 AmazonEC2Client ec2Client = connect(region, awsAccount_.getAwsAccessKeyId(), awsAccount_.getAwsSecretKey());
 
                 Boolean success;
-
+                
+                allSnapshotsClean(ec2Client);
+                
                 success = eideticClean(ec2Client);
                 if (!success) {
-                    continue;
+                    logger.error("Event=\"Error\", Error=\"error in SnapshotCleaner workflow\"");
                 }
-
-                allSnapshotsClean(ec2Client);
 
                 ec2Client.shutdown();
             } catch (Exception e) {
@@ -179,7 +179,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                     continue;
                 }
 
-                try {
+                try { //Checks to see if we modified tag, if it is the same tag the tag retain date m
                     if (snaptag.getValue().equals(voltag.getValue())) {
                         continue;
                     }
@@ -209,6 +209,37 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 }
             }
         }
+
+        filters = new Filter[1];
+        filters[0] = new Filter().withName("tag-key").withValues("Eidetic-CopySnapshot");
+
+        describeSnapshotRequest
+                = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters);
+        describeSnapshotsResult
+                = EC2ClientMethods.describeSnapshots(ec2Client,
+                        describeSnapshotRequest,
+                        numRetries_,
+                        maxApiRequestsPerSecond_,
+                        uniqueAwsAccountIdentifier_);
+
+        snapshots = describeSnapshotsResult.getSnapshots();
+
+        for (Snapshot snapshot : snapshots) {
+            int timeSinceCreation = getDaysBetweenNowAndSnapshot(snapshot);
+
+            if (timeSinceCreation <= eideticCleanKeepDays_) {
+                continue;
+            }
+
+            try {
+                deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            } catch (Exception e) {
+                logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                        + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+            }
+
+        }
+
         return true;
     }
 
