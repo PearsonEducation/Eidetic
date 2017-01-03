@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
@@ -74,12 +74,12 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 
                 success = eideticClean(ec2Client);
                 if (!success) {
-                    logger.error("Event=\"Error\", Error=\"error in SnapshotCleaner workflow\"");
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotCleaner workflow\"");
                 }
 
                 ec2Client.shutdown();
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error in SnapshotCleaner workflow\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotCleaner workflow\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -151,7 +151,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 try {
                     voltags = getResourceTags(volumes.get(0));
                 } catch (Exception e) {
-                    logger.info("Event=\"Error\", Error=\"error getting vol in Amnesia\", Volumes_toString=\"" + volumes.toString() + "\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error getting vol in Amnesia\", Volumes_toString=\"" + volumes.toString() + "\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     continue;
                 }
@@ -184,7 +184,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                         continue;
                     }
                 } catch (Exception e) {
-                    logger.info("Event=\"Error\", Error=\"error comparing vol and snapshot tag values\", Volume_id=\"" + volumes.get(0).getVolumeId() + ", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error comparing vol and snapshot tag values\", Volume_id=\"" + volumes.get(0).getVolumeId() + ", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     continue;
                 }
@@ -192,18 +192,18 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 try {
                     deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
-                    logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
 
             } else {
                 //Volume doesn't exist
-                if (timeSinceCreation > 90) {
-                    //See if old vol still exists. If not, if snap is 90 days old, delete.
+                if (timeSinceCreation > eideticCleanKeepDays_) {
+                    //See if old vol still exists. If not, if snap is $eideticCleanKeepDays_ days old, delete.
                     try {
                         deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                     } catch (Exception e) {
-                        logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                        logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                                 + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     }
                 }
@@ -234,7 +234,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
             try {
                 deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
 
@@ -267,7 +267,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 try {
                     deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
-                    logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
             }

@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class RefreshAwsAccountVolumes implements Runnable {
 
@@ -107,7 +107,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
                     localVolumeTime = resultSet.get(0);
                     localVolumeNoTime = resultSet.get(1);
                 } catch (Exception e) {
-                    logger.error("Event=\"Error\", Error=\"error getting from resultSet\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error getting from resultSet\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
 
@@ -197,7 +197,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
                 Object obj = parser.parse(tagValue);
                 eideticParameters = (JSONObject) obj;
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                                 + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 break;
             }
@@ -210,7 +210,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
         try {
             createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
         } catch (Exception e) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                                 + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
         }
         return createSnapshot;
@@ -224,7 +224,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
                 try {
                     localVolumeTime.get(region).add(volume);
                 } catch (Exception e) {
-                    logger.info("Event=\"Error\", Error=\"error adding vol to VolumeTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding vol to VolumeTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
                 volTimeHasTag_.put(volume, true);
@@ -232,7 +232,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
                 try {
                     localVolumeNoTime.get(region).add(volume);
                 } catch (Exception e) {
-                    logger.info("Event=\"Error\", Error=\"error adding vol to VolumeTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding vol to VolumeTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
                 volNoTimeHasTag_.put(volume, true);
@@ -255,7 +255,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
             try {
                 localVolumeTime.get(region).add(volume);
             } catch (Exception e) {
-                logger.info("Event=\"Error\", Error=\"error adding vol to VolumeNoTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding vol to VolumeNoTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         } else if (!(createSnapshot.containsKey("RunAt")) && localVolumeTime.get(region).contains(volume)) {
@@ -264,7 +264,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
             try {
                 localVolumeNoTime.get(region).add(volume);
             } catch (Exception e) {
-                logger.info("Event=\"Error\", Error=\"error adding vol to VolumeNoTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding vol to VolumeNoTime_\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         } else {
@@ -297,7 +297,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
                 try {
                     volCopyHasTag_.replace(volume, true);
                 } catch (Exception e) {
-                    logger.info("Event=\"Error\", Error=\"error adding vol to CopyVolumeSnapshots\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding vol to CopyVolumeSnapshots\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
             } else {
@@ -305,14 +305,14 @@ public class RefreshAwsAccountVolumes implements Runnable {
                 try {
                     localCopyVolumeSnapshots.get(region).add(volume);
                 } catch (Exception e) {
-                    logger.info("Event=\"Error\", Error=\"error adding vol to CopyVolumeSnapshots\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding vol to CopyVolumeSnapshots\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
 
                 try {
                     volCopyHasTag_.put(volume, true);
                 } catch (Exception e) {
-                    logger.info("Event=\"Error\", Error=\"error adding vol to CopyVolumeSnapshots\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding vol to CopyVolumeSnapshots\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
             }
@@ -330,7 +330,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
             try {
                 localVolumeTime.get(region).remove(vol);
             } catch (Exception e) {
-                logger.info("Event=\"Error\", Error=\"error removing vol from VolumeTime_\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error removing vol from VolumeTime_\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -348,7 +348,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
             try {
                 localVolumeNoTime.get(region).remove(vol);
             } catch (Exception e) {
-                logger.info("Event=\"Error\", Error=\"error removing vol from VolumeNoTime_\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error removing vol from VolumeNoTime_\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -366,7 +366,7 @@ public class RefreshAwsAccountVolumes implements Runnable {
             try {
                 localCopyVolumeSnapshots.get(region).remove(vol);
             } catch (Exception e) {
-                logger.info("Event=\"Error\", Error=\"error removing vol from CopyVolumeSnapshots_\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error removing vol from CopyVolumeSnapshots_\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }

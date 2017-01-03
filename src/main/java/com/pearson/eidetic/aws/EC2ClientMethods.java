@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class EC2ClientMethods {
     
@@ -69,10 +69,14 @@ public class EC2ClientMethods {
                     break;
                 }
             } catch (Exception e) {
-                logger.error(snapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                if (e.toString().contains("retired")) {
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + snapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                    return createSnapshotResult;
+                }
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + snapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
-        logger.info("Event=\"Snapshot Created\", Volume_id=\"" + snapshotRequest.getVolumeId() + "\"");
+        logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\",Event=\"Snapshot Created\", Volume_id=\"" + snapshotRequest.getVolumeId() + "\"");
         return createSnapshotResult;
 
     }
@@ -80,6 +84,11 @@ public class EC2ClientMethods {
     public static CopySnapshotResult copySnapshot(AmazonEC2Client ec2Client, CopySnapshotRequest snapshotRequest,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         CopySnapshotResult copySnapshotResult = null;
+        
+        if (numRetries >= 3) {
+            numRetries = 3;
+        }
+        
         for (int i = 0; i <= numRetries; i++) {
             try {
                 // if the initial download attempt failed, wait for i * 500ms 
@@ -103,14 +112,14 @@ public class EC2ClientMethods {
                     break;
                 }
             } catch (Exception e) {
-                if (e.toString().contains("20109")) {
+                if (e.toString().contains("20109") || e.toString().contains("Too many snapshot") || e.toString().contains("retired")) {
                     return copySnapshotResult;
                 }
                 
-                logger.error(snapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + snapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
-        logger.info("Event=\"Snapshot Copied\", source_region=\"" + snapshotRequest.getSourceRegion() + 
+        logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\",Event=\"Snapshot Copied\", source_region=\"" + snapshotRequest.getSourceRegion() + 
                 "\", destination_region=\"" + snapshotRequest.getDestinationRegion() + "\", source_snapshot_id=\"" + snapshotRequest.getSourceSnapshotId() + "\"");
         return copySnapshotResult;
 
@@ -140,18 +149,18 @@ public class EC2ClientMethods {
                     try {
                         GlobalVariables.apiRequestCountersByAwsAccount.get(uniqueAwsAccountIdentifier).incrementAndGet();
                     } catch (Exception e) {
-                        logger.error(createTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                        logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + createTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                     }
                     break;
                 } catch (Exception e) {
                     if (e.toString().contains("TagLimitExceeded")) {
                         break;
                     }
-                    logger.error(createTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + createTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                 }
                 
             } catch (Exception e) {
-                logger.error(createTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + createTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
 
@@ -181,15 +190,15 @@ public class EC2ClientMethods {
                     try {
                         GlobalVariables.apiRequestCountersByAwsAccount.get(uniqueAwsAccountIdentifier).incrementAndGet();
                     } catch (Exception e) {
-                        logger.error(deleteTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                        logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deleteTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                     }
                     break;
                 } catch (Exception e) {
-                    logger.error(deleteTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deleteTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                 }
                 
             } catch (Exception e) {
-                logger.error(deleteTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deleteTagsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
 
@@ -219,18 +228,22 @@ public class EC2ClientMethods {
                     try {
                         GlobalVariables.apiRequestCountersByAwsAccount.get(uniqueAwsAccountIdentifier).incrementAndGet();
                     } catch (Exception e) {
-                        logger.error(deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                        logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                     }
                     break;
                 } catch (Exception e) {
-                    logger.error(deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                    if (e.toString().contains("InvalidSnapshot.InUse")) {
+                        logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                        break;
+                    }
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                 }
 
             } catch (Exception e) {
-                logger.error(deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
-        logger.info("Event=\"Snapshot Deleted\", Snapshot_id=\"" + deletesnapshotRequest.getSnapshotId() + "\"");
+        logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\",Event=\"Snapshot Deleted\", Snapshot_id=\"" + deletesnapshotRequest.getSnapshotId() + "\"");
     }
     
     public static DescribeVolumesResult describeVolumes(AmazonEC2Client ec2Client, DescribeVolumesRequest describeVolumesRequest,
@@ -259,7 +272,7 @@ public class EC2ClientMethods {
                     break;
                 }
             } catch (Exception e) {
-                logger.error(describeVolumesRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + describeVolumesRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
 
@@ -293,7 +306,7 @@ public class EC2ClientMethods {
                     break;
                 }
             } catch (Exception e) {
-                logger.error(describeSnapshotsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + describeSnapshotsRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
 
@@ -328,7 +341,7 @@ public class EC2ClientMethods {
                     break;
                 }
             } catch (Exception e) {
-                logger.error(describeInstancesRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + describeInstancesRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
             }
         }
 

@@ -33,13 +33,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class SnapshotCreationTime extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
 
-    private Boolean isFinished_ = null;
+    private Boolean isFinished_ = false;
     private AwsAccount awsAccount_ = null;
     private final String uniqueAwsAccountIdentifier_;
     private final Integer maxApiRequestsPerSecond_;
@@ -72,7 +72,7 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
 
             ec2Client.shutdown();
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error in SnapshotCreationTime workflow\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotCreationTime workflow\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -121,12 +121,12 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
                     tags.add(tag);
                     setResourceTags(ec2Client, snapshot, tags, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
-                    logger.error("Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
             }
         } catch (Exception e) {
-            logger.info("Event=\"Error\", Error=\"error in addCreationPending\", stacktrace=\""
+            logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in addCreationPending\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
         }
     }
@@ -160,12 +160,12 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
                     tags.add(tag);
                     setResourceTags(ec2Client, snapshot, tags, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
-                    logger.error("Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
             }
         } catch (Exception e) {
-            logger.info("Event=\"Error\", Error=\"error in updateCreationPending\", stacktrace=\""
+            logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in updateCreationPending\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
         }
     }
@@ -204,19 +204,19 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
                     EC2ClientMethods.deleteTags(ec2Client, deleteTagsRequest, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                     
                     String time = Integer.toString(getMinutesBetweenNowAndSnapshot(snapshot));
-                    logger.info("Event=\"Snapshot_Creation_Time\", Volume_id=\"" + snapshot.getVolumeId() + "\", Snapshot_id=\"" + snapshot.getSnapshotId() +
+                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Snapshot_Creation_Time\", Volume_id=\"" + snapshot.getVolumeId() + "\", Snapshot_id=\"" + snapshot.getSnapshotId() +
                             "\", TotalCreationTime=\"" + time.toString() + "\"");
                     Tag tag = new Tag("CreationComplete", time);
                     tags.add(tag);
                     setResourceTags(ec2Client, snapshot, tags, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
-                    logger.error("Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
             }
 
         } catch (Exception e) {
-            logger.info("Event=\"Error\", Error=\"error in addCreationComplete\", stacktrace=\""
+            logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in addCreationComplete\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
         }
     }

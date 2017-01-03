@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorSnapshotChecker extends MonitorMethods implements Runnable, Monitor {
     
@@ -50,7 +50,7 @@ public class MonitorSnapshotChecker extends MonitorMethods implements Runnable, 
                     localVolumeTime = awsAccount_.getVolumeTime_Copy();
                     localVolumeNoTime = awsAccount_.getVolumeNoTime_Copy();
                 } catch (Exception e) {
-                    logger.error("Error=\"awsAccount pull failure.\" " + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                    logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"awsAccount pull failure.\" " + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                     Threads.sleepSeconds(5);
                     continue;
                 }
@@ -87,10 +87,10 @@ public class MonitorSnapshotChecker extends MonitorMethods implements Runnable, 
                     Threads.threadExecutorFixedPool(EideticSubThreads_.get(region), 1, 3600, TimeUnit.SECONDS);
                 }
                 
-                Threads.sleepMinutes(60);
+                Threads.sleepMinutes(30);
                 
             } catch (Exception e) {
-                logger.error("Error=\"MonitorSnapshotCheckerFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorSnapshotCheckerFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 Threads.sleepSeconds(10);
             }
         }

@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnable, Monitor {
 
@@ -73,7 +73,6 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
 
         //0-365
         today_ = calendar_int.get(Calendar.DAY_OF_YEAR);
-
 
         ConcurrentHashMap<Region, ArrayList<Volume>> localVolumeTime;
 
@@ -231,7 +230,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
 
                     if ((splitFactorDay_.get(region) > 5) & (timeRemaining > 60)) {
                         splitFactorDay_.replace(region, splitFactorDay_.get(region), splitFactorDay_.get(region) - 1);
-                        logger.info("Event=\"decreasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
+                        logger.info("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=\"decreasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
                                 + Integer.toString(splitFactorDay_.get(region)) + "\", VolumeNoTimeSize=\"" + Integer.toString(localVolumeTime.get(region).size()) + "\"");
                     }
                 }
@@ -242,7 +241,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                 Threads.sleepSeconds(30);
 
             } catch (Exception e) {
-                logger.error("Error=\"MonitorSnapshotVolumeTimeFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorSnapshotVolumeTimeFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
 
@@ -270,7 +269,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                     Object obj = parser.parse(tagValue);
                     eideticParameters = (JSONObject) obj;
                 } catch (Exception e) {
-                    logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     continue;
                 }
@@ -278,7 +277,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                 try {
                     createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
                 } catch (Exception e) {
-                    logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     continue;
                 }
@@ -291,7 +290,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                 try {
                     date = dayFormat_.parse(runAt);
                 } catch (ParseException e) {
-                    logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
                 if (date == null) {
@@ -382,7 +381,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                     Object obj = parser.parse(inttagvalue);
                     eideticParameters = (JSONObject) obj;
                 } catch (Exception e) {
-                    logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     continue;
                 }
@@ -406,7 +405,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                     try {
                         date = dayFormat_.parse(runAt);
                     } catch (ParseException e) {
-                        logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                        logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                                 + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     }
                     if (date == null) {
@@ -445,7 +444,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
             createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
         }
         if (createSnapshot == null) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+            logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
             return null;
         }
 
@@ -454,7 +453,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
             try {
                 period = createSnapshot.get("Interval").toString();
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -471,7 +470,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
             createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
         }
         if (createSnapshot == null) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+            logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
             return null;
         }
 
@@ -480,7 +479,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
             try {
                 runAt = createSnapshot.get("RunAt").toString();
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -507,7 +506,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
             try {
                 keep = Integer.parseInt(createSnapshot.get("Retain").toString());
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -558,7 +557,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
             }
 
         } catch (Exception e) {
-            logger.info("Event=\"Error\", Error=\"error in snapshotDecision\", stacktrace=\""
+            logger.info("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=\"Error\", Error=\"error in snapshotDecision\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             return false;
         }

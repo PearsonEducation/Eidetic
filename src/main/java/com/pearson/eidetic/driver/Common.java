@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class Common {
    private static final Logger logger = LoggerFactory.getLogger(Common.class.getName());

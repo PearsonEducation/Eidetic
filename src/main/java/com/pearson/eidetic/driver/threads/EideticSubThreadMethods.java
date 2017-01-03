@@ -19,6 +19,7 @@ import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.ec2.model.Volume;
 import com.pearson.eidetic.aws.EC2ClientMethods;
 import com.pearson.eidetic.globals.ApplicationConfiguration;
+import com.pearson.eidetic.utilities.StackTrace;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,102 +34,108 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class EideticSubThreadMethods implements EideticSubThread {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
 
     @Override
     public boolean isFinished() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-    
+
     @Override
     public List<Snapshot> getAllSnapshotsOfVolume(AmazonEC2Client ec2Client, Volume vol,
-            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier){
-        
+            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
+
         if (ec2Client == null || vol == null) {
             // logger.error("CAN'T BE NULL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             return new ArrayList<>();
         }
-        
+
         String volumeID = vol.getVolumeId();
-        
+
         Filter filter = new Filter().withName("volume-id").withValues(volumeID);
-        
-        DescribeSnapshotsRequest describeSnapshotsRequest =
-                new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filter);
-            DescribeSnapshotsResult describeSnapshotsResult = 
-                EC2ClientMethods.describeSnapshots(ec2Client, 
-                            describeSnapshotsRequest, 
-                            numRetries, 
-                            maxApiRequestsPerSecond, 
+
+        List<Snapshot> snapshots = null;
+        try {
+
+            DescribeSnapshotsRequest describeSnapshotsRequest
+                    = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filter);
+            DescribeSnapshotsResult describeSnapshotsResult
+                    = EC2ClientMethods.describeSnapshots(ec2Client,
+                            describeSnapshotsRequest,
+                            numRetries,
+                            maxApiRequestsPerSecond,
                             uniqueAwsAccountIdentifier);
-            
-        List<Snapshot> snapshots = describeSnapshotsResult.getSnapshots();
-        
+
+            snapshots = describeSnapshotsResult.getSnapshots();
+        } catch (Exception e) {
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + vol.getVolumeId() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+        }
+
         return snapshots;
     }
-    
+
     @Override
     public Collection<Tag> getResourceTags(Volume vol) {
         List<Tag> tagsList = vol.getTags();
         Collection<Tag> tags = tagsList;
         return tags;
     }
-    
+
     @Override
     public Collection<Tag> getResourceTags(Instance instance) {
         List<Tag> tagsList = instance.getTags();
         Collection<Tag> tags = tagsList;
         return tags;
     }
-    
+
     @Override
     public Collection<Tag> getResourceTags(Snapshot snapshot) {
         List<Tag> tagsList = snapshot.getTags();
         Collection<Tag> tags = tagsList;
         return tags;
     }
-    
+
     @Override
-    public void setResourceTags(AmazonEC2Client ec2Client, Volume vol, Collection<Tag> tags, 
+    public void setResourceTags(AmazonEC2Client ec2Client, Volume vol, Collection<Tag> tags,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         CreateTagsRequest createTagsRequest = new CreateTagsRequest().withResources(vol.getVolumeId()).withTags(tags);
-        EC2ClientMethods.createTags(ec2Client, 
-                            createTagsRequest, 
-                            numRetries, 
-                            maxApiRequestsPerSecond, 
-                            uniqueAwsAccountIdentifier);
+        EC2ClientMethods.createTags(ec2Client,
+                createTagsRequest,
+                numRetries,
+                maxApiRequestsPerSecond,
+                uniqueAwsAccountIdentifier);
         vol.setTags(tags);
     }
-    
+
     @Override
     public void setResourceTags(AmazonEC2Client ec2Client, Instance instance, Collection<Tag> tags,
-            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier){
+            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         CreateTagsRequest createTagsRequest = new CreateTagsRequest().withResources(instance.getInstanceId()).withTags(tags);
-        EC2ClientMethods.createTags(ec2Client, 
-                            createTagsRequest, 
-                            numRetries, 
-                            maxApiRequestsPerSecond, 
-                            uniqueAwsAccountIdentifier);
+        EC2ClientMethods.createTags(ec2Client,
+                createTagsRequest,
+                numRetries,
+                maxApiRequestsPerSecond,
+                uniqueAwsAccountIdentifier);
         instance.setTags(tags);
     }
-    
+
     @Override
     public void setResourceTags(AmazonEC2Client ec2Client, Snapshot snapshot, Collection<Tag> tags,
-            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier){
+            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         CreateTagsRequest createTagsRequest = new CreateTagsRequest().withResources(snapshot.getSnapshotId()).withTags(tags);
-        EC2ClientMethods.createTags(ec2Client, 
-                            createTagsRequest, 
-                            numRetries, 
-                            maxApiRequestsPerSecond, 
-                            uniqueAwsAccountIdentifier);
+        EC2ClientMethods.createTags(ec2Client,
+                createTagsRequest,
+                numRetries,
+                maxApiRequestsPerSecond,
+                uniqueAwsAccountIdentifier);
         snapshot.setTags(tags);
     }
-    
-    public int dateCompare(Snapshot snap1, Snapshot snap2){
+
+    public int dateCompare(Snapshot snap1, Snapshot snap2) {
         if (snap1.getStartTime().before(snap2.getStartTime())) {
             return -1;
         } else if (snap1.getStartTime().equals(snap2.getStartTime())) {
@@ -136,96 +143,112 @@ public class EideticSubThreadMethods implements EideticSubThread {
         }
         return 1;
     }
-    
+
     @Override
     public void sortSnapshotsByDate(List<Snapshot> comparelist) {
 
-        if (comparelist == null) return;
-        
-        /**
-         * Here we are looking at if there are more than one current record, we convert to datetime and compare with now. 
-         * Given the period, we decide to take a snapshot or move to new volume. 
-         * Also, comparelist[0] is oldest, comparelist[len(comparelist) - 1] is newest.
-         */
+        if (comparelist == null) {
+            return;
+        }
 
+        /**
+         * Here we are looking at if there are more than one current record, we
+         * convert to datetime and compare with now. Given the period, we decide
+         * to take a snapshot or move to new volume. Also, comparelist[0] is
+         * oldest, comparelist[len(comparelist) - 1] is newest.
+         */
         if (comparelist.size() > 1) {
             Collections.sort(comparelist, new Comparator<Snapshot>() {
                 @Override
                 public int compare(Snapshot s1, Snapshot s2) {
-                return s1.getStartTime().compareTo(s2.getStartTime());
-            }
+                    return s1.getStartTime().compareTo(s2.getStartTime());
+                }
             });
         }
     }
-    
+
     @Override
     public int getHoursBetweenNowAndNewestSnapshot(List<Snapshot> sortedCompareList) {
-        if (sortedCompareList == null || sortedCompareList.isEmpty()) return -1;
-        
+        if (sortedCompareList == null || sortedCompareList.isEmpty()) {
+            return -1;
+        }
+
         DateTime now = new DateTime();
-        DateTime dt = new DateTime(sortedCompareList.get(sortedCompareList.size()-1).getStartTime());
+        DateTime dt = new DateTime(sortedCompareList.get(sortedCompareList.size() - 1).getStartTime());
         return Hours.hoursBetween(dt, now).getHours();
     }
-    
+
     @Override
     public int getDaysBetweenNowAndNewestSnapshot(List<Snapshot> sortedCompareList) {
-        if (sortedCompareList == null || sortedCompareList.isEmpty()) return -1;
-        
+        if (sortedCompareList == null || sortedCompareList.isEmpty()) {
+            return -1;
+        }
+
         DateTime now = new DateTime();
-        DateTime dt = new DateTime(sortedCompareList.get(sortedCompareList.size()-1).getStartTime());
+        DateTime dt = new DateTime(sortedCompareList.get(sortedCompareList.size() - 1).getStartTime());
         return Days.daysBetween(dt, now).getDays();
     }
-    
+
     @Override
     public Snapshot createSnapshotOfVolume(AmazonEC2Client ec2Client, Volume vol, String description,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         String volumeId = vol.getVolumeId();
         CreateSnapshotRequest snapshotRequest = new CreateSnapshotRequest(
-                volumeId, description);       
-        
-        CreateSnapshotResult result = EC2ClientMethods.createSnapshot(ec2Client, 
-                            snapshotRequest, 
-                            numRetries, 
-                            maxApiRequestsPerSecond, 
-                            uniqueAwsAccountIdentifier);
-        Snapshot snapshot = result.getSnapshot();
-        
-        return snapshot;   
+                volumeId, description);
+        Snapshot snapshot = null;
+        try {
+            CreateSnapshotResult result = EC2ClientMethods.createSnapshot(ec2Client,
+                    snapshotRequest,
+                    numRetries,
+                    maxApiRequestsPerSecond,
+                    uniqueAwsAccountIdentifier);
+            snapshot = result.getSnapshot();
+        } catch (Exception e) {
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + snapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+        }
+
+        return snapshot;
     }
-    
+
     @Override
     public Snapshot createSnapshotOfVolume(AmazonEC2Client ec2Client, Volume vol,
-            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier){
+            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier
+    ) {
         String volumeId = vol.getVolumeId();
         String description = "";
         CreateSnapshotRequest snapshotRequest = new CreateSnapshotRequest(
-                volumeId, description);       
-        
-        CreateSnapshotResult result = EC2ClientMethods.createSnapshot(ec2Client, 
-                            snapshotRequest, 
-                            numRetries, 
-                            maxApiRequestsPerSecond, 
-                            uniqueAwsAccountIdentifier);
-        Snapshot snapshot = result.getSnapshot();
-        
+                volumeId, description);
+
+        Snapshot snapshot = null;
+        try {
+            CreateSnapshotResult result = EC2ClientMethods.createSnapshot(ec2Client,
+                    snapshotRequest,
+                    numRetries,
+                    maxApiRequestsPerSecond,
+                    uniqueAwsAccountIdentifier);
+            snapshot = result.getSnapshot();
+        } catch (Exception e) {
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + snapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+        }
+
         return snapshot;
     }
-    
+
     public void deleteSnapshot(AmazonEC2Client ec2Client, Snapshot snapshot,
-            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier){
+            Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         String snapshotId = snapshot.getSnapshotId();
-        DeleteSnapshotRequest deleteSnapshotRequest = 
-                        new DeleteSnapshotRequest().withSnapshotId(snapshotId);
-        EC2ClientMethods.deleteSnapshot(ec2Client, 
-                            deleteSnapshotRequest, 
-                            numRetries, 
-                            maxApiRequestsPerSecond, 
-                            uniqueAwsAccountIdentifier);
+        DeleteSnapshotRequest deleteSnapshotRequest
+                = new DeleteSnapshotRequest().withSnapshotId(snapshotId);
+        EC2ClientMethods.deleteSnapshot(ec2Client,
+                deleteSnapshotRequest,
+                numRetries,
+                maxApiRequestsPerSecond,
+                uniqueAwsAccountIdentifier);
     }
-    
+
     public static int[] range(int start, int length) {
         if (length < 0) {
-            int[] range = { };
+            int[] range = {};
             return range;
         }
         int[] range = new int[length - start + 1];
@@ -234,19 +257,17 @@ public class EideticSubThreadMethods implements EideticSubThread {
         }
         return range;
     }
-    
+
     public int getMinutesBetweenNowAndSnapshot(Snapshot snapshot) {
         DateTime now = new DateTime();
         DateTime dt = new DateTime(snapshot.getStartTime());
         return Minutes.minutesBetween(dt, now).getMinutes();
     }
-    
+
     public int getDaysBetweenNowAndSnapshot(Snapshot snapshot) {
         DateTime now = new DateTime();
         DateTime dt = new DateTime(snapshot.getStartTime());
         return Days.daysBetween(dt, now).getDays();
     }
-    
 
-    
-}   
+}

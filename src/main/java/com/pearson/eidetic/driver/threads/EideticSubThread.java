@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public interface EideticSubThread {
     

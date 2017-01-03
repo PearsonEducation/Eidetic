@@ -38,6 +38,8 @@ public class ApplicationConfiguration {
     private static Integer eideticCleanKeepDays_;
     
     private static Integer allSnapshotCleanKeepDays_;
+    
+    private static Integer syncServerHttpListenerPort_;
 
     private static Boolean eidetic_;
     private static Boolean eideticExpress_;
@@ -46,6 +48,7 @@ public class ApplicationConfiguration {
     private static Boolean snapsPoller_;
     private static Boolean errorChecker_;
     private static Boolean tagChecker_;
+    private static Boolean volumeSynchronizer_;
 
     public static boolean initialize(String filePathAndFilename) {
 
@@ -87,6 +90,8 @@ public class ApplicationConfiguration {
             snapsPoller_ = applicationConfiguration_.getBoolean("enable_snapshot_time_poller", false);
             errorChecker_ = applicationConfiguration_.getBoolean("enable_snapshot_error_checker", false);
             tagChecker_ = applicationConfiguration_.getBoolean("enable_instance_data_tag_checker", false);
+            volumeSynchronizer_ = applicationConfiguration_.getBoolean("enable_volume_snapshot_synchronizer", false);
+            syncServerHttpListenerPort_ = applicationConfiguration_.getInteger("synchronizer_http_port", 80);
             return true;
         } catch (Exception e) {
             logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
@@ -102,13 +107,15 @@ public class ApplicationConfiguration {
         for (int i = 0; i < 10; i++) {
             String awsAccountNicknameKey = "aws_account_nickname_" + (i + 1);
             String awsAccountNicknameValue = applicationConfiguration_.getString(awsAccountNicknameKey, "Eidetic_Default");
-
             String awsAccountAccessKeyIdKey = "aws_account_access_key_id_" + (i + 1);
             String awsAccountAccessKeyIdValue = applicationConfiguration_.getString(awsAccountAccessKeyIdKey, null);
-
             String awsAccountAccessSecretKeyKey = "aws_account_access_key_secret_" + (i + 1);
             String awsAccountAccessSecretKeyValue = applicationConfiguration_.getString(awsAccountAccessSecretKeyKey, null);
-
+            
+            if (awsAccountNicknameValue.contains("Eidetic_Default") && awsAccountAccessKeyIdValue == null && awsAccountAccessSecretKeyValue == null) {
+                continue;
+            }
+            
             String awsMaxApiRequestsPerSecondKey = "aws_account_max_api_requests_per_second_" + (i + 1);
             int awsMaxApiRequestsPerSecondValue = applicationConfiguration_.getInt(awsMaxApiRequestsPerSecondKey, 100);
 
@@ -163,6 +170,10 @@ public class ApplicationConfiguration {
     public static Boolean getTagChecker() {
         return tagChecker_;
     }
+    
+    public static Boolean getVolumeSynchronizer() {
+        return volumeSynchronizer_;
+    }
 
     public static String getDefaultEideticTag() {
         return defaultEideticTag_;
@@ -174,6 +185,10 @@ public class ApplicationConfiguration {
 
     public static Integer getallSnapshotCleanKeepDays() {
         return allSnapshotCleanKeepDays_;
+    }
+    
+    public static Integer getSyncServerHttpListenerPort() {
+        return syncServerHttpListenerPort_;
     }
 
 }

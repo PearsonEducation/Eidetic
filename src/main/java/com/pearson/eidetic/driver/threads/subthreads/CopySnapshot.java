@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.pearson.eidetic.driver.threads.subthreads;
 
 import com.amazonaws.ClientConfiguration;
@@ -25,6 +20,7 @@ import com.pearson.eidetic.driver.threads.EideticSubThread;
 import com.pearson.eidetic.driver.threads.EideticSubThreadMethods;
 import com.pearson.eidetic.globals.ApplicationConfiguration;
 import com.pearson.eidetic.utilities.StackTrace;
+import com.pearson.eidetic.utilities.Threads;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -36,13 +32,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class CopySnapshot extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
 
-    private Boolean isFinished_;
+    private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
     private final String awsSecretKey_;
     private final String uniqueAwsAccountIdentifier_;
@@ -83,19 +79,52 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                     continue;
                 }
 
-                String period = getPeriod(eideticParameters, vol);
-                if (period == null) {
-                    continue;
-                }
+                String period = null;
+                Boolean both = null;
+                Integer keep = null;
+                Integer keepSync;
 
-                Integer keep = getKeep(eideticParameters, vol);
-                if (keep == null) {
-                    continue;
-                }
+                if ((eideticParameters.containsKey("CreateSnapshot")) && !(eideticParameters.containsKey("SyncSnapshot"))) {
+                    period = getPeriod(eideticParameters, vol);
+                    if (period == null) {
+                        continue;
+                    }
 
-                String date_suffix = establishDate_Suffix(vol, period, date);
-                if (date_suffix == null) {
-                    continue;
+                    keep = getKeep(eideticParameters, vol, false);
+                    if (keep == null) {
+                        continue;
+                    }
+
+                    both = false;
+
+                } else if (!(eideticParameters.containsKey("CreateSnapshot")) && (eideticParameters.containsKey("SyncSnapshot"))) {
+                    period = "sync";
+
+                    keep = getKeep(eideticParameters, vol, true);
+                    if (keep == null) {
+                        continue;
+                    }
+
+                    both = false;
+
+                } else if ((eideticParameters.containsKey("CreateSnapshot")) && (eideticParameters.containsKey("SyncSnapshot"))) {
+                    period = getPeriod(eideticParameters, vol);
+                    if (period == null) {
+                        continue;
+                    }
+
+                    keep = getKeep(eideticParameters, vol, false);
+                    keepSync = getKeep(eideticParameters, vol, true);
+                    if (keep == null || keepSync == null) {
+                        continue;
+                    }
+
+                    if (keepSync > keep) {
+                        keep = keepSync;
+                    }
+
+                    both = true;
+
                 }
 
                 String volId = vol.getVolumeId();
@@ -136,8 +165,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
 
                     //This looks ok to me
                     if (("week".equals(period) && days < 0) || ("week".equals(period) && days >= 7)) {
-                    } else if (("day".equals(period) && days < 0) || ("day".equals(period) && days >= 1)) {
                     } else if (("hour".equals(period) && hours < 0) || ("hour".equals(period) && hours >= 1)) {
+                    } else if (("day".equals(period) && days < 0) || ("day".equals(period) && days >= 1) || ("sync".equals(period) && days >= 1)) {
                     } else if (("month".equals(period) && days < 0) || ("month".equals(period) && days >= 30)) {
                     } else {
                         continue;
@@ -177,14 +206,13 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                         vol,
                         snapshot,
                         period,
-                        date_suffix,
                         date,
                         intCopytagvalue,
                         region_,
                         numRetries_,
                         maxApiRequestsPerSecond_,
                         uniqueAwsAccountIdentifier_);
-                
+
                 if (newSnapshotId == null) {
                     continue;
                 }
@@ -223,10 +251,13 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                         uniqueAwsAccountIdentifier_);
 
                 gotoec2Client.shutdown();
+                //This will help copy more snapshots per copy snapshot run
+                Threads.sleepMilliseconds(250);
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error in CopySnapshot workflow\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in CopySnapshot workflow\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
+
         }
         ec2Client.shutdown();
         isFinished_ = true;
@@ -274,7 +305,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
             Object obj = parser.parse(inttagvalue);
             eideticParameters = (JSONObject) obj;
         } catch (Exception e) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
         }
         return eideticParameters;
@@ -284,12 +315,13 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         if ((eideticParameters == null)) {
             return null;
         }
+
         JSONObject createSnapshot = null;
         if (eideticParameters.containsKey("CreateSnapshot")) {
             createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
         }
         if (createSnapshot == null) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
             return null;
         }
 
@@ -298,7 +330,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
             try {
                 period = createSnapshot.get("Interval").toString();
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -306,18 +338,29 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         return period;
     }
 
-    public Integer getKeep(JSONObject eideticParameters, Volume vol) {
+    public Integer getKeep(JSONObject eideticParameters, Volume vol, Boolean sync) {
         if ((eideticParameters == null) || (vol == null)) {
             return null;
         }
 
         JSONObject createSnapshot = null;
-        if (eideticParameters.containsKey("CreateSnapshot")) {
-            createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
-        }
-        if (createSnapshot == null) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
-            return null;
+        if (sync) {
+            if (eideticParameters.containsKey("SyncSnapshot")) {
+                createSnapshot = (JSONObject) eideticParameters.get("SyncSnapshot");
+            }
+            if (createSnapshot == null) {
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+                return null;
+            }
+        } else {
+
+            if (eideticParameters.containsKey("CreateSnapshot")) {
+                createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
+            }
+            if (createSnapshot == null) {
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+                return null;
+            }
         }
 
         Integer keep = null;
@@ -325,7 +368,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
             try {
                 keep = Integer.parseInt(createSnapshot.get("Retain").toString());
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -364,25 +407,9 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
             gotoname = intCopytagvalue;
             gotoendpoint = "ec2." + gotoname + ".amazonaws.com";
         } else {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
         }
         return gotoendpoint;
-    }
-
-    private String establishDate_Suffix(Volume vol, String period, Date date) {
-        String date_suffix = null;
-        if ("day".equals(period)) {
-            date_suffix = date.toString().split(" ")[0];
-        } else if ("hour".equals(period)) {
-            date_suffix = date.toString().split(" ")[3].split(":")[0];
-        } else if ("week".equals(period)) {
-            date_suffix = date.toString().split(" ")[2];
-        } else if ("month".equals(period)) {
-            date_suffix = date.toString().split(" ")[1];
-        } else {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
-        }
-        return date_suffix;
     }
 
     private String getCopytagvalue(Volume vol, JSONObject eideticParameters) {
@@ -394,7 +421,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
             copySnapshot = eideticParameters.get("CopySnapshot").toString();
         }
         if (copySnapshot == null) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
             return null;
         }
 
@@ -418,7 +445,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
 
             }
         } catch (Exception e) {
-            logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\"," + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
         }
         return gotoregion;
     }
@@ -434,6 +461,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
             } else if ("hour".equals(period) && sndesc.startsWith("hour_snapshot")) {
                 copycomparelist.add(snapshot);
             } else if ("month".equals(period) && sndesc.startsWith("month_snapshot")) {
+                copycomparelist.add(snapshot);
+            } else if (sndesc.startsWith("sync_snapshot")) {
                 copycomparelist.add(snapshot);
             }
         }
@@ -485,21 +514,26 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                 comparelist.add(snapshot);
             } else if ("month".equals(period) && sndesc.startsWith("month_snapshot")) {
                 comparelist.add(snapshot);
+            } else if (sndesc.startsWith("sync_snapshot")) {
+                comparelist.add(snapshot);
             }
         }
         return comparelist;
     }
 
     private String copySnapshotAction(AmazonEC2Client gotoec2Client, Volume vol, Snapshot snapshot,
-            String period, String date_suffix, Date date, String intCopytagvalue, Region region_,
+            String period, Date date, String intCopytagvalue, Region region_,
             Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
         String volumeAttachmentInstance = "none";
         try {
-                volumeAttachmentInstance = vol.getAttachments().get(0).getInstanceId();
+            volumeAttachmentInstance = vol.getAttachments().get(0).getInstanceId();
         } catch (Exception e) {
-                logger.debug("Volume not attached to instance: " + vol.getVolumeId());
+            logger.debug("Volume not attached to instance: " + vol.getVolumeId());
         }
-        
+        String sndesc = snapshot.getDescription();
+        if (sndesc.startsWith("sync_snapshot")) {
+            period = "sync";
+        }
         String description = period + "_snapshot " + vol.getVolumeId() + " by Eidetic CopySnapshot at " + date.toString()
                 + ". Volume attached to " + volumeAttachmentInstance;
         CopySnapshotRequest copySnapshotRequest = new CopySnapshotRequest();
@@ -509,18 +543,18 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         copySnapshotRequest.setDestinationRegion(intCopytagvalue);
         if (snapshot.isEncrypted()) {
             copySnapshotRequest.setEncrypted(snapshot.isEncrypted());
-        //  copySnapshotRequest.setPresignedUrl(copySnapshotRequest.getPresignedUrl());
+            //  copySnapshotRequest.setPresignedUrl(copySnapshotRequest.getPresignedUrl());
         }
         CopySnapshotResult copySnapshotResult = EC2ClientMethods.copySnapshot(gotoec2Client,
                 copySnapshotRequest,
                 numRetries_,
                 maxApiRequestsPerSecond_,
                 uniqueAwsAccountIdentifier_);
-        
+
         if (copySnapshotResult == null) {
             return null;
         }
-        
+
         return copySnapshotResult.getSnapshotId();
     }
 
@@ -556,7 +590,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                     maxApiRequestsPerSecond_,
                     uniqueAwsAccountIdentifier_);
         } catch (Exception e) {
-            logger.info("Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + newSnapshotId + "\", stacktrace=\""
+            logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + newSnapshotId + "\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
         }
     }
@@ -589,6 +623,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                 deletelist.add(dsnapshot);
             } else if ("month".equals(period) && sndesc.startsWith("month_snapshot")) {
                 deletelist.add(dsnapshot);
+            } else if (sndesc.startsWith("sync_snapshot")) {
+                deletelist.add(dsnapshot);
             }
         }
 
@@ -602,7 +638,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
             try {
                 deleteSnapshot(gotoec2Client, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }

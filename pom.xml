@@ -5,10 +5,9 @@
     <artifactId>Eidetic</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <evosuiteVersion>1.0.1</evosuiteVersion>
+        <evosuiteVersion>1.0.2</evosuiteVersion>
     </properties>
     
     <pluginRepositories>
@@ -20,9 +19,9 @@
     </pluginRepositories>
     <repositories>
         <repository>
-        <id>EvoSuite</id>
-        <name>EvoSuite Repository</name>
-        <url>http://www.evosuite.org/m2</url>
+            <id>EvoSuite</id>
+            <name>EvoSuite Repository</name>
+            <url>http://www.evosuite.org/m2</url>
         </repository>
     </repositories>
     
@@ -30,18 +29,41 @@
         <finalName>${project.artifactId}</finalName>
         
         <plugins>
-
+            
+            <plugin>
+                <inherited>true</inherited>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>1.3.1</version>
+                <executions>
+                    <execution>
+                        <id>enforce-maven-3</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3</version>
+                                </requireMavenVersion>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.17</version>
-                <configuration>
-                <properties>
-                <property>
-                <name>listener</name>
-                <value>org.evosuite.runtime.InitializingListener</value>
-                </property>
-                </properties>
+                <configuration>               
+                    <properties>
+                        <property>
+                            <name>listener</name>
+                            <value>org.evosuite.runtime.InitializingListener</value>
+                        </property>
+                    </properties>
                 </configuration>
             </plugin>
             
@@ -49,10 +71,14 @@
                 <groupId>org.evosuite.plugins</groupId>
                 <artifactId>evosuite-maven-plugin</artifactId>
                 <version>${evosuiteVersion}</version>
-                <executions><execution>
-                <goals> <goal> prepare </goal> </goals>
-                <phase> process-test-classes </phase>
-                </execution></executions>
+                <executions>
+                    <execution>
+                        <goals> 
+                            <goal> prepare </goal> 
+                        </goals>
+                        <phase> process-test-classes </phase>
+                    </execution>
+                </executions>
             </plugin>
             
             <plugin>
@@ -101,34 +127,43 @@
             </plugin>
             <!--
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>findbugs-maven-plugin</artifactId>
-                <version>3.0.2</version>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-maven-plugin</artifactId>
+                <version>9.3.9.v20160517</version>
                 <configuration>
-                    <effort>Max</effort>
-                    <failOnError>false</failOnError>
-                    <findbugsXmlOutputDirectory>${project.build.directory}/findbugs</findbugsXmlOutputDirectory>
-                    <threshold>medium</threshold>
-                    <xmlOutput>true</xmlOutput>
-                    <excludeFilterFile>findbugs_exclude.xml</excludeFilterFile>
-                    <reportPlugins>
-                        <plugin>
-                            <groupId>org.codehaus.mojo</groupId>
-                            <artifactId>findbugs-maven-plugin</artifactId>
-                        </plugin>
-                    </reportPlugins>
+                    <jettyXml>jetty.xml</jettyXml>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>analyze-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
-           --> 
+            
+             <plugin>
+                 <groupId>org.codehaus.mojo</groupId>
+                 <artifactId>findbugs-maven-plugin</artifactId>
+                 <version>3.0.2</version>
+                 <configuration>
+                     <effort>Max</effort>
+                     <failOnError>false</failOnError>
+                     <findbugsXmlOutputDirectory>${project.build.directory}/findbugs</findbugsXmlOutputDirectory>
+                     <threshold>medium</threshold>
+                     <xmlOutput>true</xmlOutput>
+                     <excludeFilterFile>findbugs_exclude.xml</excludeFilterFile>
+                     <reportPlugins>
+                         <plugin>
+                             <groupId>org.codehaus.mojo</groupId>
+                             <artifactId>findbugs-maven-plugin</artifactId>
+                         </plugin>
+                     </reportPlugins>
+                 </configuration>
+                 <executions>
+                     <execution>
+                         <id>analyze-compile</id>
+                         <phase>compile</phase>
+                         <goals>
+                             <goal>check</goal>
+                         </goals>
+                     </execution>
+                 </executions>
+             </plugin>
+            --> 
         </plugins>
     </build>
     
@@ -172,9 +207,9 @@
         </dependency>
         
         <dependency>
-           <groupId>com.googlecode.json-simple</groupId>
-           <artifactId>json-simple</artifactId>
-           <version>1.1.1</version>
+            <groupId>com.googlecode.json-simple</groupId>
+            <artifactId>json-simple</artifactId>
+            <version>1.1.1</version>
         </dependency>
             
         <dependency>
@@ -189,7 +224,30 @@
             <version>${evosuiteVersion}</version>
             <scope>test</scope>
         </dependency>
-
+        
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>9.3.9.v20160517</version>
+        </dependency>
+       
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>9.3.9.v20160517</version>
+        </dependency>
+       
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlets</artifactId>
+            <version>9.3.9.v20160517</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.4</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
     
 </project>

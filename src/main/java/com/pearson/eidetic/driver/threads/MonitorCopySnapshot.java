@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Monitor {
     private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
@@ -65,7 +65,7 @@ public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Mon
                 try {
                     localCopyVolumeSnapshots = awsAccount_.getCopyVolumeSnapshots_Copy();
                 } catch (Exception e) {
-                    logger.error("Error=\"awsAccount pull failure.\" " + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                    logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"awsAccount pull failure.\" " + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                     Threads.sleepSeconds(5);
                     continue;
                 }
@@ -82,11 +82,7 @@ public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Mon
                     List<List<Volume>> listOfLists = Lists.partition(localCopyVolumeSnapshots.get(region), splitFactor_.get(region));
                     
                     localCopyVolumeSnapshotsList_.put(region, listsToArrayLists(listOfLists));
-                    
-                    //List<List<Volume>> lolz = Lists.partition(localVolumeNoTime.get(region), splitFactor_.get(region));
-                    
-                    //localVolumeNoTimeList_.put(region, splitArrayList(localVolumeNoTime.get(region), splitFactor_.get(region)));
-                    
+                                      
                     ArrayList<CopySnapshot> threads = new ArrayList<>();
 
                     for (ArrayList<Volume> vols : localCopyVolumeSnapshotsList_.get(region)) {
@@ -122,7 +118,6 @@ public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Mon
                     Threads.threadExecutorFixedPool(EideticSubThreads_.get(region), splitFactor_.get(region), runTimeInterval_, TimeUnit.SECONDS);
                 }
 
-                //LETS SEE IF THEY'RE DEAD
                 Boolean ejection = false;
                 Boolean theyreDead;
                 while (true) {
@@ -137,7 +132,7 @@ public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Mon
                             secsSlept.replace(region, secsSlept.get(region), secsSlept.get(region) + 1);
                             if (secsSlept.get(region) > runTimeInterval_) {
                                 splitFactor_.replace(region, splitFactor_.get(region), splitFactor_.get(region) + 1);
-                                logger.info("Event=\"increasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
+                                logger.info("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=\"increasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
                                         + Integer.toString(splitFactor_.get(region)) + "\", VolumeNoTimeSize=\"" + Integer.toString(localCopyVolumeSnapshots.get(region).size()) + "\"");
                                 ejection = true;
                                 break;
@@ -147,7 +142,6 @@ public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Mon
 
                     }
 
-                    //I dont like this
                     theyreDead = true;
                     for (Map.Entry<Region, ArrayList<Volume>> entry : localCopyVolumeSnapshots.entrySet()) {
                         Region region = entry.getKey();
@@ -179,7 +173,7 @@ public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Mon
 
                     if ((splitFactor_.get(region) > 1) & (timeRemaining > 60)) {
                         splitFactor_.replace(region, splitFactor_.get(region), splitFactor_.get(region) - 1);
-                        logger.info("Event=\"decreasing_splitFactor\", Monitor=\"CopySnapshot\", splitFactor=\""
+                        logger.info("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=\"decreasing_splitFactor\", Monitor=\"CopySnapshot\", splitFactor=\""
                                 + Integer.toString(splitFactor_.get(region)) + "\", CopyVolumeSnapshotsSize=\"" + Integer.toString(localCopyVolumeSnapshots.get(region).size()) + "\"");
                     }
                 }
@@ -187,9 +181,9 @@ public class MonitorCopySnapshot extends MonitorMethods implements Runnable, Mon
                 localCopyVolumeSnapshotsList_.clear();
                 EideticSubThreads_.clear();
                 
-                Threads.sleepMinutes(30);
+                Threads.sleepMinutes(10);
             } catch (Exception e) {
-                logger.error("Error=\"MonitorCopySnapshotFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorCopySnapshotFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 Threads.sleepSeconds(10);
             }
         }

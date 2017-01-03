@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorSnapshotCleaner extends MonitorMethods implements Runnable, Monitor {
 
@@ -50,7 +50,7 @@ public class MonitorSnapshotCleaner extends MonitorMethods implements Runnable, 
                 Threads.sleepMinutes(1440);
 
             } catch (Exception e) {
-                logger.error("Error=\"MonitorSnapshotCleanerFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorSnapshotCleanerFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 Threads.sleepSeconds(10);
             }
         }

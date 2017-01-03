@@ -13,6 +13,7 @@ List of Eidetic Automated Backup System components:
 - Snapshot Time Poller
 - Tag Checker
 - Error Checker
+- Snapshot Synchronizer 
 
 You are allowed to have any combination of components to run at any time. You can make your choice via the application.properties configuration file. 
 
@@ -29,7 +30,7 @@ Eidetic is the heart of the Eidetic automated backup system. The main process wh
 
 Create tags in this format (tag-key : tag-value): 
 
- `Eidetic : { “CreateSnapshot” : { “Interval” : “x”, “Retain” : “y” } }`
+ `Eidetic : { "CreateSnapshot" : { "Interval" : "x", "Retain" : "y" } }`
 
 where:
 
@@ -39,30 +40,30 @@ where:
 
   
   
-Optional: add extra parameter, “RunAt” to “day” interval. 
+Optional: add extra parameter, "gRunAt" to "day" interval. 
 
-`{ “CreateSnapshot” : { “Interval” : “day”, “Retain” : “y”,  “RunAt” : “z”} }`
+`{ "CreateSnapshot" : { "Interval" : "day", "Retain" : "y",  "RunAt" : "z"} }`
 
 where:
 
-- day: The interval must be set to “day”
+- day: The interval must be set to "gday"
 
 - y: the quantity of snapshots to retain, values range from a minimum of two and upwards
 
-- z: the time to take the snapshot. Values range from “00:00:00” to “23:59:59”
+- z: the time to take the snapshot. Values range from "g00:00:00" to "23:59:59"
 
 Example Tags:
 
 ```
-Eidetic : { “CreateSnapshot” : { “Interval” : “hour”, “Retain” : “24” } }
+Eidetic : { "CreateSnapshot" : { "Interval" : "hour", "Retain" : "24" } }
 
-Eidetic : { “CreateSnapshot” : { “Interval” : “day”, “Retain” : “10” } }
+Eidetic : { "CreateSnapshot" : { "Interval" : "day", "Retain" : "10" } }
 
-Eidetic : { “CreateSnapshot” : { “Interval” : “week”, “Retain” : “2” } }
+Eidetic : { "CreateSnapshot" : { "Interval" : "week", "Retain" : "2" } }
 
-Eidetic : { “CreateSnapshot” : { “Interval” : “day”, “Retain” : “5”,  “RunAt” : “09:30:00”} }
+Eidetic : { "CreateSnapshot" : { "Interval" : "day", "Retain" : "5",  "RunAt" : "09:30:00"} }
 
-Eidetic : { “CreateSnapshot” : { “Interval” : “day”, “Retain” : “7”,  “RunAt” : “18:45:00”} }
+Eidetic : { "CreateSnapshot" : { "Interval" : "day", "Retain" : "7",  "RunAt" : "18:45:00"} }
 
 ```
   
@@ -75,7 +76,7 @@ As an important note, CreateSnapshot parameter is the parameter that will actual
   
   
 Usage:
-`Eidetic : { “CopySnapshot” : “r” }`
+`Eidetic : { "CopySnapshot" : "r" }`
 
 where:
 
@@ -84,11 +85,11 @@ where:
 Example Tags:
 
 ```
-Eidetic : { “CopySnapshot” : “us-east-1”, “CreateSnapshot” : { “Interval” : “hour”, “Retain” : “4” } }
+Eidetic : { "CopySnapshot" : "us-east-1", "CreateSnapshot" : { "Interval" : "hour", "Retain" : "4" } }
 
-Eidetic : { “CreateSnapshot” : { “Interval” : “day”, “Retain” : “10” }, “CopySnapshot” : “us-west-2”  }
+Eidetic : { "CreateSnapshot" : { "Interval" : "day", "Retain" : "10" }, "CopySnapshot" : "us-west-2"  }
 
-Eidetic : { “CopySnapshot” : “ap-northeast-1”, “CreateSnapshot” : { “Interval” : “day”, “Retain” : “5”,  “RunAt” : “12:30:00”} }
+Eidetic : { "CopySnapshot" : "ap-northeast-1", "CreateSnapshot" : { "Interval" : "day", "Retain" : "5",  "RunAt" : "12:30:00"} }
 
 ```
   
@@ -102,7 +103,7 @@ Eidetic Checker is one of the validation extensions for Eidetic. Just as Eidetic
 
 For example, take this tag value:
 
-`{ “CreateSnapshot” : { “Interval” : “day”, “Retain” : “7” } }`
+`{ "CreateSnapshot" : { "Interval" : "day", "Retain" : "7" } }`
 
 This tag value has been applied to an EBS volume. It will see if there are in fact snapshots executing in a daily time frame. If not, it will take a snapshot immediately and write out an error log for human inspection. 
   
@@ -144,4 +145,42 @@ Tag Checker will find tagged instances and ensure an Eidetic tag is on the volum
 
 There is the possibility of snapshot resulting in an error state at some point after creation. If we are snapshotting a volume of importance, we need to know immediately that an error has occurred. Error Checker will scan for all snapshots in an error state and write a log detailing the snapshot. Error Checker will clean the snapshot afterwards.
 
+### Snapshot Synchronizer 
+
+Enables an API to take snapshots. Endpoint will be located at configured port (default is 80) and at /api/syncsnapshot. Desired volumes must be tagged using the syntax below to enable Eidetic to take snapshots of requested volumes. It is possible to mix in other eidetic parameters into the tag. Retain for synchronization will be considered independently than that of Create Snapshot's Retain. It is possible to add in an optional Validate parameter which checks to see that at least a single synchronized snapshot has occurred in the Cluster in the time frame indicated by CreateAfter (which is in hours.) If there has not be at least a single synchronized snapshot in the cluster by $CreateAfter hours, Eidetic will create a cluster wide snapshot on every volume in that region which share that specific cluster name.  
+
+Usage:
+`Eidetic : { "SyncSnapshot" : { "Retain" : "x" } }`
+
+where:
+
+- x: the quantity of snapshots to retain, values range from a minimum of two and upwards
+
+Optional: add an extra nested parameter Validate, containing Cluster and CreateAfter. 
+
+`{ "SyncSnapshot" : { "Retain" : "x", "Validate" : { "Cluster" : "y", "CreateAfter" : "z"} } }`
+
+where:
+
+- y: Identifies a grouping of volumes to check
+
+- z: The number of hours to wait before snapshotting the entire cluster (identified by the cluster parameter)
+
+Example Tags:
+
+```
+Eidetic : { "SyncSnapshot" : { "Retain" : "5" } }
+
+Eidetic : { "SyncSnapshot" : { "Retain" : "30", "Validate" : { "Cluster" : "prod-mongo", "CreateAfter" : "24"} } }
+
+Eidetic : { "SyncSnapshot" : { "Retain" : "3", "Validate" : { "Cluster" : "graphite", "CreateAfter" : "40"} }, "CopySnapshot" : "us-west-2" }
+
+Eidetic : { "CreateSnapshot" : { "Interval" : "day", "Retain" : "5",  "RunAt" : "09:30:00"}, "SyncSnapshot" : { "Retain" : "3" } }
+```
+
+A sample http post using curl showcasing the correct syntax follows. The required parameters in the http post are accountid, region, and volumes (which is a comma separated list of volids). AWS accountid will be written to logs if the value is unknown or easily accessible. In application.properties, the port has been changed to 8080 for this example.
+
+`curl --data "accountid=912399967890&region=US_EAST_1&volumes=vol-9c314473,vol-9131447e,vol-6f314480,vol-0f3144e0" 127.0.0.1:8080/api/syncsnapshot`
+
+Note again that all volumes must have a SyncSnapshot parameter to enable snapshotting. 
 

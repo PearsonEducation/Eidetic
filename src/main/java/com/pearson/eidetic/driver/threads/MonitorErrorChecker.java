@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorErrorChecker extends MonitorMethods implements Runnable, Monitor {
 
@@ -75,7 +75,7 @@ public class MonitorErrorChecker extends MonitorMethods implements Runnable, Mon
                 Threads.sleepMinutes(10);
 
             } catch (Exception e) {
-                logger.error("Error=\"MonitorErrorCheckerFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorErrorCheckerFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 Threads.sleepSeconds(10);
             }
         }

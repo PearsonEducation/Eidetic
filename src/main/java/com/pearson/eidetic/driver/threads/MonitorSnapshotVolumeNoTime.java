@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorSnapshotVolumeNoTime extends MonitorMethods implements Runnable, Monitor {
 
@@ -140,7 +140,7 @@ public class MonitorSnapshotVolumeNoTime extends MonitorMethods implements Runna
                             secsSlept.replace(region, secsSlept.get(region), secsSlept.get(region) + 1);
                             if (secsSlept.get(region) > runTimeInterval_) {
                                 splitFactor_.replace(region, splitFactor_.get(region), splitFactor_.get(region) + 1);
-                                logger.info("Event=\"increasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
+                                logger.info("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=\"increasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
                                         + Integer.toString(splitFactor_.get(region)) + "\", VolumeNoTimeSize=\"" + Integer.toString(localVolumeNoTime.get(region).size()) + "\"");
                                 ejection = true;
                                 break;
@@ -185,7 +185,7 @@ public class MonitorSnapshotVolumeNoTime extends MonitorMethods implements Runna
 
                     if ((splitFactor_.get(region) > 1) & (timeRemaining > 60)) {
                         splitFactor_.replace(region, splitFactor_.get(region), splitFactor_.get(region) - 1);
-                        logger.info("Event=\"decreasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
+                        logger.info("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Event=\"decreasing_splitFactor\", Monitor=\"SnapshotVolumeNoTime\", splitFactor=\""
                                 + Integer.toString(splitFactor_.get(region)) + "\", VolumeNoTimeSize=\"" + Integer.toString(localVolumeNoTime.get(region).size()) + "\"");
                     }
                 }
@@ -209,7 +209,7 @@ public class MonitorSnapshotVolumeNoTime extends MonitorMethods implements Runna
                 localVolumeNoTimeList_.clear();
                 EideticSubThreads_.clear();
             } catch (Exception e) {
-                logger.error("Error=\"MonitorSnapshotVolumeNoTimeFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorSnapshotVolumeNoTimeFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 Threads.sleepSeconds(10);
             }
         }

@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class GlobalVariables {
     private static final Logger logger = LoggerFactory.getLogger(GlobalVariables.class.getName());

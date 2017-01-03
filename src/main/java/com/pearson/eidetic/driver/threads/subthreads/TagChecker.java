@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class TagChecker extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
@@ -97,7 +97,7 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
                 ec2Client.shutdown();
 
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error in TagChecker workflow\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in TagChecker workflow\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -288,7 +288,7 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
             try {
                 volume = describeVolumeResult.getVolumes().get(0);
             } catch (Exception e) {
-                logger.error("Event\"Error\", Error=\"volume id does not exist\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event\"Error\", Error=\"volume id does not exist\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
 
@@ -323,7 +323,7 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
             try {
                 setResourceTags(ec2Client, volume, tags_volume, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
-                logger.error("Event\"Error\", Error=\"error adding tags to volume\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event\"Error\", Error=\"error adding tags to volume\", Volume_id=\"" + volume.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }

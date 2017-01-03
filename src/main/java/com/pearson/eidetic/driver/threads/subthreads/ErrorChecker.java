@@ -30,13 +30,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class ErrorChecker extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
 
-    private Boolean isFinished_ = null;
+    private Boolean isFinished_ = false;
     private AwsAccount awsAccount_ = null;
     private final String uniqueAwsAccountIdentifier_;
     private final Integer maxApiRequestsPerSecond_;
@@ -74,7 +74,7 @@ public class ErrorChecker extends EideticSubThreadMethods implements Runnable, E
                 ec2Client.shutdown();
 
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error in ErrorChecker workflow\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in ErrorChecker workflow\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -119,7 +119,7 @@ public class ErrorChecker extends EideticSubThreadMethods implements Runnable, E
 
     private void loggerOuputSnapshotErrors(List<Snapshot> error_snapshots, Region region) {
         for (Snapshot snapshot : error_snapshots) {
-            logger.info("Event=\"SnapshotInErrorState\", region=\"" + region.toString() + ", snapshot_id=\"" + snapshot.getSnapshotId() + "\"");
+            logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"SnapshotInErrorState\", region=\"" + region.toString() + ", snapshot_id=\"" + snapshot.getSnapshotId() + "\"");
         }
     }
 
@@ -128,7 +128,7 @@ public class ErrorChecker extends EideticSubThreadMethods implements Runnable, E
             try {
                 deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }

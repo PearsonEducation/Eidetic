@@ -29,13 +29,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
 
-    private Boolean isFinished_ = null;
+    private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
     private final String awsSecretKey_;
     private final String uniqueAwsAccountIdentifier_;
@@ -76,7 +76,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
                     Object obj = parser.parse(inttagvalue);
                     eideticParameters = (JSONObject) obj;
                 } catch (Exception e) {
-                    logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     continue;
                 }
@@ -105,7 +105,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
                 snapshotDeletion(ec2Client, vol, period, keep);
 
             } catch (Exception e) {
-                logger.error("Event=\"Error\", Error=\"error in SnapshotVolumeNoTime workflow\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotVolumeNoTime workflow\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
 
@@ -160,7 +160,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
         }
         if (createSnapshot == null) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
             return null;
         }
 
@@ -169,7 +169,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             try {
                 period = createSnapshot.get("Interval").toString();
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -187,7 +187,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             createSnapshot = (JSONObject) eideticParameters.get("CreateSnapshot");
         }
         if (createSnapshot == null) {
-            logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
             return null;
         }
 
@@ -196,7 +196,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             try {
                 keep = Integer.parseInt(createSnapshot.get("Retain").toString());
             } catch (Exception e) {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
@@ -242,7 +242,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             }
 
         } catch (Exception e) {
-            logger.info("Event=\"Error\", Error=\"error in snapshotDecision\", stacktrace=\""
+            logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in snapshotDecision\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             return false;
         }
@@ -262,7 +262,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             } else if ("week".equalsIgnoreCase(period)) {
             } else if ("month".equalsIgnoreCase(period)) {
             } else {
-                logger.error("Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\"");
                 return false;
             }
 
@@ -272,7 +272,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             try {
                 volumeAttachmentInstance = vol.getAttachments().get(0).getInstanceId();
             } catch (Exception e) {
-                logger.debug("Volume not attached to instance: " + vol.getVolumeId());
+                logger.debug("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Volume not attached to instance: " + vol.getVolumeId());
             }
 
             String description = period + "_snapshot " + vol.getVolumeId() + " by Eidetic at " + date.toString()
@@ -282,7 +282,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             try {
                 current_snap = createSnapshotOfVolume(ec2Client, vol, description, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
-                logger.info("Event=\"Error\", Error=\"error creating snapshot from volume\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error creating snapshot from volume\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 return false;
             }
@@ -290,13 +290,15 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             try {
                 setResourceTags(ec2Client, current_snap, tags_volume, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
-                logger.error("Event\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + current_snap.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + current_snap.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                return false;
             }
 
         } catch (Exception e) {
-            logger.error("Event=\"Error, Error=\"error in snapshotCreation\", stacktrace=\""
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error, Error=\"error in snapshotCreation\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+            return false;
         }
 
         return true;
@@ -334,12 +336,12 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
                 try {
                     deleteSnapshot(ec2Client, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
-                    logger.error("Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 }
             }
         } catch (Exception e) {
-            logger.error("Event=\"Error\", Error=\"error in snapshotDeletion\", stacktrace=\""
+            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in snapshotDeletion\", stacktrace=\""
                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
         }
 

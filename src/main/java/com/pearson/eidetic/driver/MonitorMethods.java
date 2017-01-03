@@ -23,7 +23,7 @@ import org.joda.time.Hours;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorMethods implements Monitor {
 

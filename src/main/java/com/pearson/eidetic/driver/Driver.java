@@ -13,8 +13,10 @@ import com.pearson.eidetic.driver.threads.MonitorSnapshotVolumeTime;
 import com.pearson.eidetic.driver.threads.MonitorCopySnapshot;
 import com.pearson.eidetic.driver.threads.MonitorErrorChecker;
 import com.pearson.eidetic.driver.threads.MonitorTagChecker;
+import com.pearson.eidetic.driver.threads.MonitorVolumeSyncValidator;
 import com.pearson.eidetic.driver.threads.RefreshAwsAccountVolumes;
 import com.pearson.eidetic.globals.ApplicationConfiguration;
+import com.pearson.eidetic.network.http.JettySync;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +30,7 @@ import java.util.Map;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class Driver {
 
@@ -40,13 +42,17 @@ public class Driver {
     private static final Map<String, Thread> MyMonitorSnapshotCleanerThreads_ = new HashMap<>();
     private static final Map<String, Thread> MyMonitorSnapshotCreationTimeThreads_ = new HashMap<>();
     private static final Map<String, Thread> MyMonitorSnapshotErrorCheckerThreads_ = new HashMap<>();
+    private static final Map<String, Thread> MyMonitorSnapshotSyncValidatorThreads_ = new HashMap<>();
     private static final Map<String, Thread> MyMonitorInstanceTagCheckerThreads_ = new HashMap<>();
 
     private static final Map<String, Thread> MyRefreshAwsAccountVolumesThreads_ = new HashMap<>();
 
+    private static JettyThread jetty_;
+
     public static void main(String[] args) {
 
         boolean initializeSuccess = initializeApplication();
+
         if (!initializeSuccess) {
             logger.error("An error occurred during application initialization. Shutting down application...");
             System.exit(-1);
@@ -69,12 +75,14 @@ public class Driver {
              * Eidetic (Creation and deletion of Eidetic tags)
              */
             if (ApplicationConfiguration.getEidetic()) {
+                logger.info("Starting Eidetic threads");
                 startAccountSnapshotThreads();
             }
             /**
              * Eidetic_Express (Creation and deletion of CopySnapshot)
              */
             if (ApplicationConfiguration.getEideticExpress()) {
+                logger.info("Starting Eidetic_Express threads");
                 startAccountCopySnapshotThreads();
             }
             /**
@@ -82,18 +90,21 @@ public class Driver {
              * tags)
              */
             if (ApplicationConfiguration.getEideticChecker()) {
+                logger.info("Starting Eidetic_Checker threads");
                 startAccountSnapshotCheckerThreads();
             }
             /**
              * Amnesia (Cleaning all stranded and old snapshots for AWS account)
              */
             if (ApplicationConfiguration.getAmnesia()) {
+                logger.info("Starting Amnesia threads");
                 startAccountSnapshotCleaningThreads();
             }
             /**
              * Snapspoller (Monitors creation time for snapshots)
              */
             if (ApplicationConfiguration.getSnapsPoller()) {
+                logger.info("Starting Snapspoller threads");
                 startAccountSnapshotCreationTimeThreads();
             }
             /**
@@ -101,6 +112,7 @@ public class Driver {
              * and deletes them)
              */
             if (ApplicationConfiguration.getErrorChecker()) {
+                logger.info("Starting ErrorChecker threads");
                 startAccountSnapshotErrorCheckerThreads();
             }
             /**
@@ -108,8 +120,35 @@ public class Driver {
              * (ex. /dev/xvdk) and tags them)
              */
             if (ApplicationConfiguration.getTagChecker()) {
+                logger.info("Starting TagChecker threads");
                 startAccountInstanceTagCheckerThreads();
             }
+                       
+            /**
+             * Volume synchronizer (Creates an API tier for synchronizing
+             * snapshots and validating said snapshots)
+             */
+            logger.info(ApplicationConfiguration.getVolumeSynchronizer().toString() + " for jetty initialization");
+            if (ApplicationConfiguration.getVolumeSynchronizer()) {
+                // start the jetty http server
+                logger.info("Starting Volume Snapshot Synchronizer threads");
+                startSnapshotSyncValidatorThreads();
+                logger.info("Attempting to start Jetty Server");
+                
+                try {
+                    jetty_ = new JettyThread();
+                    Thread jetty = new Thread(jetty_);
+                    jetty.start();
+                } catch (Exception e) {
+                    logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
+                    logger.info("Unable to launch jetty Server. Shutting down application");
+                    System.exit(-1);
+                }
+
+                logger.info("Started Jetty Server");
+
+            }
+            
             /**
              * RefreshAwsAccountVolumes (Refreshes tagged volumes in our memory)
              */
@@ -140,7 +179,6 @@ public class Driver {
     }
 
     public static boolean initializeApplication() {
-
         boolean isLogbackSuccess = readAndSetLogbackConfiguration(System.getProperty("user.dir"), "logback_config.xml");
 
         boolean isApplicationConfigSuccess = ApplicationConfiguration.initialize(System.getProperty("user.dir") + File.separator + "application.properties");
@@ -275,10 +313,23 @@ public class Driver {
         }
     }
 
+    private static void startSnapshotSyncValidatorThreads() {
+        List<MonitorVolumeSyncValidator> MySnapshotSyncValidator_ = new ArrayList<>();
+        for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
+            MySnapshotSyncValidator_.add(new MonitorVolumeSyncValidator(awsAccount, 30));
+        }
+
+        for (int i = 0; i < MySnapshotSyncValidator_.size(); i++) {
+            MyMonitorSnapshotSyncValidatorThreads_.put("Thread_" + i, new Thread(MySnapshotSyncValidator_.get(i)));
+            MyMonitorSnapshotSyncValidatorThreads_.get("Thread_" + i).start();
+        }
+    }
+
     private static void startRefreshAwsAccountVolumesThreads() {
         List<RefreshAwsAccountVolumes> MyRefreshAwsAccountVolumes_ = new ArrayList<>();
         for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
             MyRefreshAwsAccountVolumes_.add(new RefreshAwsAccountVolumes(awsAccount));
+            logger.info("Starting account refresh threads for account id: " + awsAccount.getAwsAccountId());
         }
 
         for (int i = 0; i < MyRefreshAwsAccountVolumes_.size(); i++) {

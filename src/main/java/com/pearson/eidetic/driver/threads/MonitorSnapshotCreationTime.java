@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  *
- * @author uwalkj6
+ * @author Judah Walker
  */
 public class MonitorSnapshotCreationTime extends MonitorMethods implements Runnable, Monitor {
 
@@ -45,7 +45,7 @@ public class MonitorSnapshotCreationTime extends MonitorMethods implements Runna
                 Threads.sleepSeconds(30);
 
             } catch (Exception e) {
-                logger.error("Error=\"MonitorSnapshotCreationTimeFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorSnapshotCreationTimeFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 Threads.sleepSeconds(10);
             }
         }
