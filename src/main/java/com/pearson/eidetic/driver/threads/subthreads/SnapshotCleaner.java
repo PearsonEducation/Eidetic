@@ -69,9 +69,9 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 AmazonEC2Client ec2Client = connect(region, awsAccount_.getAwsAccessKeyId(), awsAccount_.getAwsSecretKey());
 
                 Boolean success;
-                
+
                 allSnapshotsClean(ec2Client);
-                
+
                 success = eideticClean(ec2Client);
                 if (!success) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotCleaner workflow\"");
@@ -125,88 +125,94 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
 
         List<Snapshot> snapshots = describeSnapshotsResult.getSnapshots();
         for (Snapshot snapshot : snapshots) {
-            int timeSinceCreation = getDaysBetweenNowAndSnapshot(snapshot);
+            try {
+                int timeSinceCreation = getDaysBetweenNowAndSnapshot(snapshot);
 
-            if (timeSinceCreation <= eideticCleanKeepDays_) {
-                continue;
-            }
-
-            String volId = snapshot.getVolumeId();
-            Filter[] volfilters = new Filter[1];
-            volfilters[0] = new Filter().withName("volume-id").withValues(volId);
-            DescribeVolumesRequest describeVolumesRequest
-                    = new DescribeVolumesRequest().withFilters(volfilters);
-            DescribeVolumesResult describeVolumeResult
-                    = EC2ClientMethods.describeVolumes(ec2Client,
-                            describeVolumesRequest,
-                            numRetries_,
-                            maxApiRequestsPerSecond_,
-                            uniqueAwsAccountIdentifier_);
-
-            List<Volume> volumes = describeVolumeResult.getVolumes();
-
-            if (!volumes.isEmpty()) {
-
-                Collection<Tag> voltags;
-                try {
-                    voltags = getResourceTags(volumes.get(0));
-                } catch (Exception e) {
-                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error getting vol in Amnesia\", Volumes_toString=\"" + volumes.toString() + "\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
-                            + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                if (timeSinceCreation <= eideticCleanKeepDays_) {
                     continue;
                 }
 
-                Tag voltag = null;
-                for (Tag tag : voltags) {
-                    if ("Eidetic".equals(tag.getKey())) {
-                        voltag = tag;
-                        break;
-                    }
-                }
-                if (voltag == null) {
-                    continue;
-                }
+                String volId = snapshot.getVolumeId();
+                Filter[] volfilters = new Filter[1];
+                volfilters[0] = new Filter().withName("volume-id").withValues(volId);
+                DescribeVolumesRequest describeVolumesRequest
+                        = new DescribeVolumesRequest().withFilters(volfilters);
+                DescribeVolumesResult describeVolumeResult
+                        = EC2ClientMethods.describeVolumes(ec2Client,
+                                describeVolumesRequest,
+                                numRetries_,
+                                maxApiRequestsPerSecond_,
+                                uniqueAwsAccountIdentifier_);
 
-                Collection<Tag> snapshottags = getResourceTags(snapshot);
-                Tag snaptag = null;
-                for (Tag tag : snapshottags) {
-                    if ("Eidetic".equals(tag.getKey())) {
-                        snaptag = tag;
-                        break;
-                    }
-                }
-                if (snaptag == null) {
-                    continue;
-                }
+                List<Volume> volumes = describeVolumeResult.getVolumes();
 
-                try { //Checks to see if we modified tag, if it is the same tag the tag retain date m
-                    if (snaptag.getValue().equals(voltag.getValue())) {
+                if (!volumes.isEmpty()) {
+
+                    Collection<Tag> voltags;
+                    try {
+                        voltags = getResourceTags(volumes.get(0));
+                    } catch (Exception e) {
+                        logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error getting vol in Amnesia\", Volumes_toString=\"" + volumes.toString() + "\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                                + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                         continue;
                     }
-                } catch (Exception e) {
-                    logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error comparing vol and snapshot tag values\", Volume_id=\"" + volumes.get(0).getVolumeId() + ", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
-                            + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
-                    continue;
-                }
 
-                try {
-                    deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
-                } catch (Exception e) {
-                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
-                            + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
-                }
+                    Tag voltag = null;
+                    for (Tag tag : voltags) {
+                        if ("Eidetic".equals(tag.getKey())) {
+                            voltag = tag;
+                            break;
+                        }
+                    }
+                    if (voltag == null) {
+                        continue;
+                    }
 
-            } else {
-                //Volume doesn't exist
-                if (timeSinceCreation > eideticCleanKeepDays_) {
-                    //See if old vol still exists. If not, if snap is $eideticCleanKeepDays_ days old, delete.
+                    Collection<Tag> snapshottags = getResourceTags(snapshot);
+                    Tag snaptag = null;
+                    for (Tag tag : snapshottags) {
+                        if ("Eidetic".equals(tag.getKey())) {
+                            snaptag = tag;
+                            break;
+                        }
+                    }
+                    if (snaptag == null) {
+                        continue;
+                    }
+
+                    try { //Checks to see if we modified tag, if it is the same tag the tag retain date m
+                        if (snaptag.getValue().equals(voltag.getValue())) {
+                            continue;
+                        }
+                    } catch (Exception e) {
+                        logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error comparing vol and snapshot tag values\", Volume_id=\"" + volumes.get(0).getVolumeId() + ", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                                + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                        continue;
+                    }
+
                     try {
                         deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                     } catch (Exception e) {
                         logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                                 + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                     }
+
+                } else {
+                    //Volume doesn't exist
+                    if (timeSinceCreation > eideticCleanKeepDays_) {
+                        //See if old vol still exists. If not, if snap is $eideticCleanKeepDays_ days old, delete.
+                        try {
+                            deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                        } catch (Exception e) {
+                            logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                                    + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                        }
+                    }
                 }
+
+            } catch (Exception e) {
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"exeception in workflow\", Volume_id=\"" + snapshot.toString() + ", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                        + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
         }
 
@@ -225,16 +231,21 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
         snapshots = describeSnapshotsResult.getSnapshots();
 
         for (Snapshot snapshot : snapshots) {
-            int timeSinceCreation = getDaysBetweenNowAndSnapshot(snapshot);
-
-            if (timeSinceCreation <= eideticCleanKeepDays_) {
-                continue;
-            }
-
             try {
-                deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                int timeSinceCreation = getDaysBetweenNowAndSnapshot(snapshot);
+
+                if (timeSinceCreation <= eideticCleanKeepDays_) {
+                    continue;
+                }
+
+                try {
+                    deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                } catch (Exception e) {
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                            + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                }
             } catch (Exception e) {
-                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
+                logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"exeception in workflow\", Volume_id=\"" + snapshot.toString() + ", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
             }
 

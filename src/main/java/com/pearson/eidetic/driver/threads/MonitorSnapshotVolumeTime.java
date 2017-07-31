@@ -153,8 +153,12 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                             }
 
                             didMySnapshotDay_.get(region).add(date);
-
-                            EideticSubThreads_.put(region, threads);
+                            
+                            if (EideticSubThreads_.containsKey(region) && !EideticSubThreads_.get(region).isEmpty()) {
+                                EideticSubThreads_.get(region).addAll(threads);
+                            } else {
+                                EideticSubThreads_.put(region, threads);
+                            }
 
                         }
 

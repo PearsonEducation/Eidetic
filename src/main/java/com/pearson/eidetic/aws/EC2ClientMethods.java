@@ -234,7 +234,7 @@ public class EC2ClientMethods {
                 } catch (Exception e) {
                     if (e.toString().contains("InvalidSnapshot.InUse")) {
                         logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
-                        break;
+                        return;
                     }
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier + "\"," + deletesnapshotRequest.toString() + System.lineSeparator() + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
                 }

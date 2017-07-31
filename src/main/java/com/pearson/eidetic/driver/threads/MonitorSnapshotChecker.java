@@ -40,7 +40,7 @@ public class MonitorSnapshotChecker extends MonitorMethods implements Runnable, 
     
     @Override
     public void run() {
-        Threads.sleepMinutes(1); //Let regular Eidetic process run first @ start up so we do not alert.
+        Threads.sleepMinutes(3); //Let regular Eidetic process run first @ start up so we do not alert.
         ConcurrentHashMap<Region, ArrayList<Volume>> localVolumeNoTime;
         ConcurrentHashMap<Region, ArrayList<Volume>> localVolumeTime;
         

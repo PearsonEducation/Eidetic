@@ -14,6 +14,15 @@ import com.amazonaws.services.ec2.model.Filter;
 import com.amazonaws.services.ec2.model.Tag;
 import com.amazonaws.services.ec2.model.Volume;
 import com.amazonaws.services.identitymanagement.AmazonIdentityManagementClient;
+import com.amazonaws.services.rds.AmazonRDS;
+import com.amazonaws.services.rds.AmazonRDSClient;
+import com.amazonaws.services.rds.model.DBCluster;
+import com.amazonaws.services.rds.model.DBInstance;
+import com.amazonaws.services.rds.model.DescribeDBClustersRequest;
+import com.amazonaws.services.rds.model.DescribeDBClustersResult;
+import com.amazonaws.services.rds.model.DescribeDBInstancesRequest;
+import com.amazonaws.services.rds.model.DescribeDBInstancesResult;
+import com.amazonaws.services.rds.model.ListTagsForResourceRequest;
 
 import com.pearson.eidetic.globals.ApplicationConfiguration;
 import java.util.ArrayList;
@@ -22,6 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.pearson.eidetic.utilities.StackTrace;
+import com.pearson.eidetic.utilities.Threads;
+import java.util.HashSet;
 import java.util.List;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -40,6 +51,7 @@ public class AwsAccount {
     private final String awsSecretKey_;
     private final String uniqueAwsAccountIdentifier_;
     private final Integer maxApiRequestsPerSecond_;
+    private final Boolean prohibitRDSCalls_;
 
     private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<Volume>> VolumeNoTime_ = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<Volume>> VolumeTime_ = new ConcurrentHashMap<>();
@@ -49,8 +61,13 @@ public class AwsAccount {
 
     private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<Volume>> CopyVolumeSnapshots_ = new ConcurrentHashMap<>();
 
+    private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> DBInstanceNoTime_ = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> DBInstanceTime_ = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> DBClusterNoTime_ = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> DBClusterTime_ = new ConcurrentHashMap<>();
+
     public AwsAccount(int index, String awsNickname,
-            String awsAccessKeyId, String awsSecretKey, Integer maxApiRequestsPerSecond) {
+            String awsAccessKeyId, String awsSecretKey, Integer maxApiRequestsPerSecond, Boolean prohibitRDSCalls) {
 
         List<com.amazonaws.regions.Region> regions = com.amazonaws.regions.RegionUtils.getRegions();
         try {
@@ -64,7 +81,12 @@ public class AwsAccount {
                 VolumeTime_.put(region, new ArrayList<Volume>());
                 CopyVolumeSnapshots_.put(region, new ArrayList<Volume>());
                 VolumeSyncValidate_.put(region, new ArrayList<Volume>());
-                VolumeSync_ .put(region, new ArrayList<Volume>());       
+                VolumeSync_.put(region, new ArrayList<Volume>());
+
+                DBInstanceNoTime_.put(region, new ArrayList<DBInstance>());
+                DBInstanceTime_.put(region, new ArrayList<DBInstance>());
+                DBClusterNoTime_.put(region, new ArrayList<DBCluster>());
+                DBClusterTime_.put(region, new ArrayList<DBCluster>());
 
             }
         } catch (Exception e) {
@@ -79,6 +101,7 @@ public class AwsAccount {
         //Removing awsAccessKeyId from logs.
         //this.uniqueAwsAccountIdentifier_ = awsNickname_ + "~" + awsAccessKeyId_ + "~" + index_;
         this.uniqueAwsAccountIdentifier_ = awsNickname_ + index_;
+        this.prohibitRDSCalls_ = prohibitRDSCalls;
 
         this.awsAccountId_ = retrieveAWSAccountID();
 
@@ -124,7 +147,7 @@ public class AwsAccount {
         return maxApiRequestsPerSecond_;
     }
 
-    public void initializeSnapshots() {
+    public void initializeEC2Snapshots() {
         JSONParser parser = new JSONParser();
 
         for (Entry<com.amazonaws.regions.Region, ArrayList<Volume>> entry : VolumeNoTime_.entrySet()) {
@@ -218,6 +241,181 @@ public class AwsAccount {
                 }
             }
             ec2Client.shutdown();
+
+        }
+    }
+
+    public void initializeRDSSnapshots() {
+        for (Entry<com.amazonaws.regions.Region, ArrayList<DBInstance>> entry : DBInstanceNoTime_.entrySet()) {
+            com.amazonaws.regions.Region region = entry.getKey();
+            AmazonRDS amazonRDSClient;
+            String endpoint = "rds." + region.getName() + ".amazonaws.com";
+
+            AWSCredentials credentials = new BasicAWSCredentials(awsAccessKeyId_, awsSecretKey_);
+            ClientConfiguration clientConfig = new ClientConfiguration();
+            clientConfig.setProtocol(Protocol.HTTPS);
+
+            amazonRDSClient = new AmazonRDSClient(credentials, clientConfig);
+            amazonRDSClient.setRegion(region);
+            amazonRDSClient.setEndpoint(endpoint);
+
+            DescribeDBInstancesRequest describeDBInstancesRequest
+                    = new DescribeDBInstancesRequest();
+            DescribeDBInstancesResult describeDBInstancesResult
+                    = RDSClientMethods.describeDBInstances(amazonRDSClient,
+                            describeDBInstancesRequest,
+                            ApplicationConfiguration.getAwsCallRetryAttempts(),
+                            maxApiRequestsPerSecond_,
+                            uniqueAwsAccountIdentifier_);
+
+            List<DBInstance> dbInstances = describeDBInstancesResult.getDBInstances();
+            String marker = describeDBInstancesResult.getMarker();
+            while (marker != null) {
+                describeDBInstancesRequest.setMarker(marker);
+
+                describeDBInstancesResult
+                        = RDSClientMethods.describeDBInstances(amazonRDSClient,
+                                describeDBInstancesRequest,
+                                ApplicationConfiguration.getAwsCallRetryAttempts(),
+                                maxApiRequestsPerSecond_,
+                                uniqueAwsAccountIdentifier_);
+
+                dbInstances.addAll(describeDBInstancesResult.getDBInstances());
+
+                marker = describeDBInstancesResult.getMarker();
+            }
+            List<DBInstance> deleteList = new ArrayList();
+            for (DBInstance dbInstance : dbInstances) {
+
+                if (!(dbInstance.getDBClusterIdentifier() == null)) {
+                    Threads.sleepMilliseconds(50);
+                    List<com.amazonaws.services.rds.model.Tag> tags;
+                    try {
+                        String arn = String.format("arn:aws:rds:%s:%s:db:%s", region.getName(), getAwsAccountId(), dbInstance.getDBInstanceIdentifier());
+                        ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
+                        tags = RDSClientMethods.getTags(amazonRDSClient,
+                                listTagsForResourceRequest,
+                                ApplicationConfiguration.getAwsCallRetryAttempts(),
+                                getMaxApiRequestsPerSecond(),
+                                getUniqueAwsAccountIdentifier()).getTagList();
+                    } catch (Exception e) {
+                        logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Error in workflow, can not get tags\", DBInstance_id=\"" + dbInstance.getDBInstanceIdentifier() + "\", stacktrace=\""
+                                + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                        continue;
+                    }
+
+                    JSONObject createSnapshot = new JSONObject();
+                    for (com.amazonaws.services.rds.model.Tag tag : tags) {
+                        if (tag.getKey().equalsIgnoreCase("Eidetic_Interval")) {
+                            createSnapshot.put("Interval", tag.getValue());
+                        } else if (tag.getKey().equalsIgnoreCase("Eidetic_RunAt")) {
+                            createSnapshot.put("RunAt", tag.getValue());
+                        } else if (tag.getKey().equalsIgnoreCase("Eidetic_Retain")) {
+                            createSnapshot.put("Retain", tag.getValue());
+                        }
+                    }
+                    if (createSnapshot.isEmpty()) {
+                        deleteList.add(dbInstance);
+                    }
+                }
+
+            }
+
+            for (DBInstance dbInstance : deleteList) {
+                try {
+                    dbInstances.remove(dbInstance);
+                } catch (Exception e) {
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Error in workflow\", DBInstance_id=\"" + dbInstance.getDBInstanceIdentifier() + "\", stacktrace=\""
+                            + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                }
+            }
+
+            HashSet<DBCluster> seenDBClusters = new HashSet();
+
+            for (DBInstance dbInstance : dbInstances) {
+                Threads.sleepMilliseconds(50);
+
+                List<com.amazonaws.services.rds.model.Tag> tags;
+                try {
+                    String arn = String.format("arn:aws:rds:%s:%s:db:%s", region.getName(), awsAccountId_, dbInstance.getDBInstanceIdentifier());
+                    ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
+                    tags = RDSClientMethods.getTags(amazonRDSClient,
+                            listTagsForResourceRequest,
+                            ApplicationConfiguration.getAwsCallRetryAttempts(),
+                            maxApiRequestsPerSecond_,
+                            uniqueAwsAccountIdentifier_).getTagList();
+                } catch (Exception e) {
+                    logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Error in workflow, can not get tags\", DBInstance_id=\"" + dbInstance.getDBInstanceIdentifier() + "\", stacktrace=\""
+                            + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
+                    continue;
+                }
+                for (com.amazonaws.services.rds.model.Tag tag : tags) {
+
+                    String tagValue = null;
+                    if (tag.getKey().equalsIgnoreCase("Eidetic_Interval")) {
+                        tagValue = tag.getValue();
+                    }
+
+                    if (tagValue == null) {
+                        continue;
+                    }
+
+                    //DBInstanceNoTime_
+                    //DBInstanceTime_
+                    //DBClusterNoTime_
+                    //DBClusterTime_
+                    Boolean contains_runat = false;
+                    for (com.amazonaws.services.rds.model.Tag tag2 : tags) {
+                        if (tag2.getKey().equalsIgnoreCase("Eidetic_RunAt")) {
+                            contains_runat = true;
+                            break;
+                        }
+                    }
+
+                    if (contains_runat) {
+                        if (dbInstance.getDBClusterIdentifier() != null) {
+                            //DescribeDBClustersResult	describeDBClusters(DescribeDBClustersRequest request)
+                            DescribeDBClustersRequest describeDBClustersRequest = new DescribeDBClustersRequest().withDBClusterIdentifier(dbInstance.getDBClusterIdentifier());
+                            DescribeDBClustersResult describeDBClustersResult = RDSClientMethods.describeDBClusters(amazonRDSClient,
+                                    describeDBClustersRequest,
+                                    ApplicationConfiguration.getAwsCallRetryAttempts(),
+                                    maxApiRequestsPerSecond_,
+                                    uniqueAwsAccountIdentifier_);
+                            List<DBCluster> dbClusters = describeDBClustersResult.getDBClusters();
+                            for (DBCluster dbCluster : dbClusters) {
+                                if (!seenDBClusters.contains(dbCluster)) {
+                                    DBClusterTime_.get(region).add(dbCluster);
+                                    seenDBClusters.add(dbCluster);
+                                }
+                            }
+                        } else {
+                            DBInstanceTime_.get(region).add(dbInstance);
+                        }
+                    } else {
+                        if (dbInstance.getDBClusterIdentifier() != null) {
+                            //DescribeDBClustersResult	describeDBClusters(DescribeDBClustersRequest request)
+                            DescribeDBClustersRequest describeDBClustersRequest = new DescribeDBClustersRequest().withDBClusterIdentifier(dbInstance.getDBClusterIdentifier());
+                            DescribeDBClustersResult describeDBClustersResult = RDSClientMethods.describeDBClusters(amazonRDSClient,
+                                    describeDBClustersRequest,
+                                    ApplicationConfiguration.getAwsCallRetryAttempts(),
+                                    maxApiRequestsPerSecond_,
+                                    uniqueAwsAccountIdentifier_);
+                            List<DBCluster> dbClusters = describeDBClustersResult.getDBClusters();
+                            for (DBCluster dbCluster : dbClusters) {
+                                if (!seenDBClusters.contains(dbCluster)) {
+                                    DBClusterNoTime_.get(region).add(dbCluster);
+                                    seenDBClusters.add(dbCluster);
+                                }
+                            }
+                        } else {
+                            DBInstanceNoTime_.get(region).add(dbInstance);
+                        }
+                    }
+
+                    break;
+                }
+            }
+            amazonRDSClient.shutdown();
 
         }
     }
@@ -330,6 +528,102 @@ public class AwsAccount {
         }
 
         return CopyVolumeSnapshots_Copy;
+    }
+
+    //private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> DBInstanceNoTime_ = new ConcurrentHashMap<>();
+    //private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> DBInstanceTime_ = new ConcurrentHashMap<>();
+    //private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> RDSClusterNoTime_ = new ConcurrentHashMap<>();
+    //private final ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> RDSClusterTime_ = new ConcurrentHashMap<>();
+    public ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> getDBInstanceNoTime_Copy() {
+
+        ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> DBInstanceNoTime_Copy = new ConcurrentHashMap<>();
+
+        synchronized (DBInstanceNoTime_) {
+            for (Region region : DBInstanceNoTime_.keySet()) {
+                ArrayList<DBInstance> dbInstance = DBInstanceNoTime_.get(region);
+                ArrayList dbInstances = new ArrayList<>(dbInstance);
+                DBInstanceNoTime_Copy.put(region, dbInstances);
+            }
+        }
+
+        return DBInstanceNoTime_Copy;
+    }
+
+    public void replaceDBInstanceNoTime(ConcurrentHashMap<Region, ArrayList<DBInstance>> newDBInstanceNoTime) {
+        synchronized (DBInstanceNoTime_) {
+            DBInstanceNoTime_.clear();
+            DBInstanceNoTime_.putAll(newDBInstanceNoTime);
+        }
+    }
+
+    public ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> getDBInstanceTime_Copy() {
+
+        ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBInstance>> DBInstanceTime_Copy = new ConcurrentHashMap<>();
+
+        synchronized (DBInstanceTime_) {
+            for (Region region : DBInstanceTime_.keySet()) {
+                ArrayList<DBInstance> dbInstance = DBInstanceTime_.get(region);
+                ArrayList dbInstances = new ArrayList<>(dbInstance);
+                DBInstanceTime_Copy.put(region, dbInstances);
+            }
+        }
+
+        return DBInstanceTime_Copy;
+    }
+
+    public void replaceDBInstanceTime(ConcurrentHashMap<Region, ArrayList<DBInstance>> newDBInstanceTime) {
+        synchronized (DBInstanceTime_) {
+            DBInstanceTime_.clear();
+            DBInstanceTime_.putAll(newDBInstanceTime);
+        }
+    }
+
+    public ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> getDBClusterNoTime_Copy() {
+
+        ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> DBClusterNoTime_Copy = new ConcurrentHashMap<>();
+
+        synchronized (DBClusterNoTime_) {
+            for (Region region : DBClusterNoTime_.keySet()) {
+                ArrayList<DBCluster> dbCluster = DBClusterNoTime_.get(region);
+                ArrayList dbClusters = new ArrayList<>(dbCluster);
+                DBClusterNoTime_Copy.put(region, dbClusters);
+            }
+        }
+
+        return DBClusterNoTime_Copy;
+    }
+
+    public void replaceDBClusterNoTime(ConcurrentHashMap<Region, ArrayList<DBCluster>> newDBClusterNoTime) {
+        synchronized (DBClusterNoTime_) {
+            DBClusterNoTime_.clear();
+            DBClusterNoTime_.putAll(newDBClusterNoTime);
+        }
+    }
+
+    public ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> getDBClusterTime_Copy() {
+
+        ConcurrentHashMap<com.amazonaws.regions.Region, ArrayList<DBCluster>> DBClusterTime_Copy = new ConcurrentHashMap<>();
+
+        synchronized (DBClusterTime_) {
+            for (Region region : DBClusterTime_.keySet()) {
+                ArrayList<DBCluster> dbCluster = DBClusterTime_.get(region);
+                ArrayList dbClusters = new ArrayList<>(dbCluster);
+                DBClusterTime_Copy.put(region, dbClusters);
+            }
+        }
+
+        return DBClusterTime_Copy;
+    }
+
+    public void replaceDBClusterTime(ConcurrentHashMap<Region, ArrayList<DBCluster>> newDBClusterTime) {
+        synchronized (DBClusterTime_) {
+            DBClusterTime_.clear();
+            DBClusterTime_.putAll(newDBClusterTime);
+        }
+    }
+
+    public Boolean prohibitRDSCalls() {
+        return prohibitRDSCalls_;
     }
 
 }

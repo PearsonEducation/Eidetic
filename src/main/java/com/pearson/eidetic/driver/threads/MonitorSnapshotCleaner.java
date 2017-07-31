@@ -45,9 +45,9 @@ public class MonitorSnapshotCleaner extends MonitorMethods implements Runnable, 
                         awsAccount_.getMaxApiRequestsPerSecond(),
                         ApplicationConfiguration.getAwsCallRetryAttempts()));
 
-                Threads.threadExecutorFixedPool(threads, 1, 600, TimeUnit.SECONDS);
+                Threads.threadExecutorFixedPool(threads, 1, 60, TimeUnit.MINUTES);
 
-                Threads.sleepMinutes(1440);
+                Threads.sleepMinutes(120);
 
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorSnapshotCleanerFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

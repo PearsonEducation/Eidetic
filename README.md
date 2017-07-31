@@ -13,7 +13,11 @@ List of Eidetic Automated Backup System components:
 - Snapshot Time Poller
 - Tag Checker
 - Error Checker
-- Snapshot Synchronizer 
+- Snapshot Synchronizer
+- RDS Automated Manual Snapshot
+- RDS Automated Snapshot Checker
+- RDS Automated Snapshot Cleaner
+- RDS Automated Tag Propagator
 
 You are allowed to have any combination of components to run at any time. You can make your choice via the application.properties configuration file. 
 
@@ -184,3 +188,49 @@ A sample http post using curl showcasing the correct syntax follows. The require
 
 Note again that all volumes must have a SyncSnapshot parameter to enable snapshotting. 
 
+### RDS Automated Manual Snapshot
+
+As of the writing of this README, RDS still enables the deletion of all RDS snapshots when the RDS node gets deleted without the capability of taking a final snapshot. As such, this plugin allows the user to create an automated process of creating manual snapshots on particular RDS Instances by a series of tags (RDS tagging also prohibits the use of symbols commonly found in JSON). An example tagging follows for one particular instance.
+
+Usage (Not optional tags):
+
+`Eidetic_Interval : x`
+
+`Eidetic_Retain : y`
+
+Optional:
+
+`Eidetic_RunAt : z`
+
+Where:
+
+- x: the interval, possible choices are hour, day, week, or month
+
+- y: the quantity of snapshots to retain, values range from a minimum of number two and upwards
+
+- z: the time to take the snapshot. Values range from "00:00:00" to "23:59:59"
+
+In such a way the usage of this is similar to that of the above eidetic components. 
+
+Example:
+
+I add the following 3 tags to a DB Instance, I want it to run every day at 06:15:00 UTC and keep 30 snapshots in total (including the one I just created)
+
+`Eidetic_Interval : day`
+
+`Eidetic_Retain : 30`
+
+`Eidetic_RunAt : 06:15:00`
+
+
+### RDS Automated Snapshot Checker
+
+This plugin will look at all tagged clusters and instances and see whether a snapshot has occurred in the time specified. For example, if using `Eidetic_Interval : day` and a snapshot has not occurred in the last 24 hours, the checker will automatically create one. Note that if tagging a resource for the first time, the checker will usually automatically create a snapshot and put it into the normal RDS Eidetic workflow.
+
+### RDS Automated Snapshot Cleaner
+
+This plugin will use the provided eidetic_snapshot_retain_days and all_snapshot_retain_days of the amnesia plugin above and will act in a similar fashion to the EBS snapshots but with the RDS snapshots instead. To reiterate, all eidetic tagged snapshots are compared to the eidetic retain date and if they are older than the given x, they will be deleted. Two, eidetic can clean up all snapshots if those snapshots are older than the total snapshot retain time. 
+
+### RDS Automated Tag Propagator
+
+This plugin is very useful when it comes to running in an RDS style environment. As of the writing of this README, clusters do not allow to be tagged in the console interface but can be tagged using APIs. As such, this plugin will copy any tags on an instance and put them on a cluster. Note an important function here in the RDS specific automation. If a instance is tagged and not the cluster, the instance will have a snapshot taken of it. If the instance and the cluster are both tagged, only the cluster will have a snapshot and not the instance. As such, if you have multiple instances in a cluster that are all tagged, there will only be one resulting snapshot from the cluster. The cluster tags will be from one of the instances, so it is important to ensure that all instances have the same tags or only one instance has a tag when using this tag propagator plugin's functionality. That functionality is specifcally, iterate through all tagged instances that are in a cluster and copy the currently selected instance's tags to the cluster's tags if they differ. 

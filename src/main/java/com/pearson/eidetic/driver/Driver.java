@@ -15,6 +15,12 @@ import com.pearson.eidetic.driver.threads.MonitorErrorChecker;
 import com.pearson.eidetic.driver.threads.MonitorTagChecker;
 import com.pearson.eidetic.driver.threads.MonitorVolumeSyncValidator;
 import com.pearson.eidetic.driver.threads.RefreshAwsAccountVolumes;
+import com.pearson.eidetic.driver.threads.rds.MonitorRDSSnapshotChecker;
+import com.pearson.eidetic.driver.threads.rds.MonitorRDSSnapshotCleaner;
+import com.pearson.eidetic.driver.threads.rds.MonitorRDSSnapshotNoTime;
+import com.pearson.eidetic.driver.threads.rds.MonitorRDSSnapshotTime;
+import com.pearson.eidetic.driver.threads.rds.MonitorRDSTagPropagator;
+import com.pearson.eidetic.driver.threads.rds.RefreshAwsAccountRDSData;
 import com.pearson.eidetic.globals.ApplicationConfiguration;
 import com.pearson.eidetic.network.http.JettySync;
 import java.io.File;
@@ -45,6 +51,14 @@ public class Driver {
     private static final Map<String, Thread> MyMonitorSnapshotSyncValidatorThreads_ = new HashMap<>();
     private static final Map<String, Thread> MyMonitorInstanceTagCheckerThreads_ = new HashMap<>();
 
+    private static final Map<String, Thread> MyMonitorRDSSnapshotTimeThreads_ = new HashMap<>();
+    private static final Map<String, Thread> MyMonitorRDSSnapshotNoTimeThreads_ = new HashMap<>();
+    private static final Map<String, Thread> MyMonitorRDSSnapshotCheckerThreads_ = new HashMap<>();
+    private static final Map<String, Thread> MyMonitorRDSSnapshotCleanerThreads_ = new HashMap<>();
+    private static final Map<String, Thread> MyMonitorRDSTagPropagatorThreads_ = new HashMap<>();
+
+    private static final Map<String, Thread> MyRefreshAwsAccountRDSDataThreads_ = new HashMap<>();
+
     private static final Map<String, Thread> MyRefreshAwsAccountVolumesThreads_ = new HashMap<>();
 
     private static JettyThread jetty_;
@@ -71,6 +85,16 @@ public class Driver {
              * Pre-populates the passed AWS accounts with Eidetic volumes
              */
             startAwsAccountInitialization();
+
+            /**
+             * RDS Automated Tag Propagator
+             *
+             */
+            if (ApplicationConfiguration.getRDSAutomatedTagPropagator()) {
+                logger.info("Starting RDS Automated Manual Snapshot threads");
+                startRDSTagPropagatorThreads();
+            }
+
             /**
              * Eidetic (Creation and deletion of Eidetic tags)
              */
@@ -123,7 +147,43 @@ public class Driver {
                 logger.info("Starting TagChecker threads");
                 startAccountInstanceTagCheckerThreads();
             }
-                       
+
+            /**
+             * RDS Automated Manual Snapshot
+             *
+             */
+            if (ApplicationConfiguration.getRDSAutomatedSnapshoter()) {
+                logger.info("Starting RDS Automated Manual Snapshot threads");
+                startAccountRDSSnapshotThreads();
+            }
+
+            /**
+             * RDS Automated Snapshot Checker
+             *
+             */
+            if (ApplicationConfiguration.getRDSAutomatedChecker()) {
+                logger.info("Starting RDS Automated Snapshot Checker threads");
+                startAccountRDSSnapshotCheckerThreads();
+            }
+
+            /**
+             * RDS Automated Snapshot Cleaner
+             *
+             */
+            if (ApplicationConfiguration.getRDSAutomatedCleaner()) {
+                logger.info("Starting RDS Automated Snapshot Cleaner threads");
+                startAccountRDSSnapshotCleaningThreads();
+            }
+
+            /**
+             * RDS Refresh Threads
+             *
+             */
+            if (ApplicationConfiguration.getRDSAutomatedSnapshoter() || ApplicationConfiguration.getRDSAutomatedChecker() || ApplicationConfiguration.getRDSAutomatedCleaner()) {
+                logger.info("Starting Account RDS Data Refresh threads");
+                startRefreshAwsAccountRDSDataThreads();
+            }
+
             /**
              * Volume synchronizer (Creates an API tier for synchronizing
              * snapshots and validating said snapshots)
@@ -134,7 +194,7 @@ public class Driver {
                 logger.info("Starting Volume Snapshot Synchronizer threads");
                 startSnapshotSyncValidatorThreads();
                 logger.info("Attempting to start Jetty Server");
-                
+
                 try {
                     jetty_ = new JettyThread();
                     Thread jetty = new Thread(jetty_);
@@ -148,7 +208,7 @@ public class Driver {
                 logger.info("Started Jetty Server");
 
             }
-            
+
             /**
              * RefreshAwsAccountVolumes (Refreshes tagged volumes in our memory)
              */
@@ -329,7 +389,7 @@ public class Driver {
         List<RefreshAwsAccountVolumes> MyRefreshAwsAccountVolumes_ = new ArrayList<>();
         for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
             MyRefreshAwsAccountVolumes_.add(new RefreshAwsAccountVolumes(awsAccount));
-            logger.info("Starting account refresh threads for account id: " + awsAccount.getAwsAccountId());
+            logger.info("Starting global account refresh threads for account id: " + awsAccount.getAwsAccountId());
         }
 
         for (int i = 0; i < MyRefreshAwsAccountVolumes_.size(); i++) {
@@ -346,7 +406,93 @@ public class Driver {
 
     private static void startAwsAccountInitialization() {
         for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
-            awsAccount.initializeSnapshots();
+            awsAccount.initializeEC2Snapshots();
+            if (!awsAccount.prohibitRDSCalls() && ApplicationConfiguration.getRDSAutomatedSnapshoter()) {
+                logger.info("Launching RDS AwsAccountInitialization threads for account id: " + awsAccount.getAwsAccountId());
+                awsAccount.initializeRDSSnapshots();
+            }
+            
+        }
+    }
+
+    private static void startAccountRDSSnapshotThreads() {
+        List<MonitorRDSSnapshotTime> MyMonitorRDSSnapshotTime_ = new ArrayList<>();
+        List<MonitorRDSSnapshotNoTime> MyMonitorRDSSnapshotNoTime_ = new ArrayList<>();
+
+        for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
+            if (!awsAccount.prohibitRDSCalls()) {
+                logger.info("Launching RDS AccountRDSSnapshot threads for account id: " + awsAccount.getAwsAccountId());
+                MyMonitorRDSSnapshotTime_.add(new MonitorRDSSnapshotTime(awsAccount));
+                MyMonitorRDSSnapshotNoTime_.add(new MonitorRDSSnapshotNoTime(awsAccount, ApplicationConfiguration.getrunTimeInterval()));
+            }
+        }
+
+        for (int i = 0; i < MyMonitorRDSSnapshotTime_.size(); i++) {
+            MyMonitorRDSSnapshotTimeThreads_.put("Thread_" + i, new Thread(MyMonitorRDSSnapshotTime_.get(i)));
+            MyMonitorRDSSnapshotNoTimeThreads_.put("Thread_" + i, new Thread(MyMonitorRDSSnapshotNoTime_.get(i)));
+            MyMonitorRDSSnapshotTimeThreads_.get("Thread_" + i).start();
+            MyMonitorRDSSnapshotNoTimeThreads_.get("Thread_" + i).start();
+        }
+    }
+
+    private static void startAccountRDSSnapshotCheckerThreads() {
+        List<MonitorRDSSnapshotChecker> MyMonitorRDSSnapshotChecker_ = new ArrayList<>();
+        for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
+            if (!awsAccount.prohibitRDSCalls()) {
+                logger.info("Launching RDS AccountRDSSnapshotChecker threads for account id: " + awsAccount.getAwsAccountId());
+                MyMonitorRDSSnapshotChecker_.add(new MonitorRDSSnapshotChecker(awsAccount));
+            }
+        }
+
+        for (int i = 0; i < MyMonitorRDSSnapshotChecker_.size(); i++) {
+            MyMonitorRDSSnapshotCheckerThreads_.put("Thread_" + i, new Thread(MyMonitorRDSSnapshotChecker_.get(i)));
+            MyMonitorRDSSnapshotCheckerThreads_.get("Thread_" + i).start();
+        }
+    }
+
+    private static void startAccountRDSSnapshotCleaningThreads() {
+        List<MonitorRDSSnapshotCleaner> MyMonitorRDSSnapshotCleaner_ = new ArrayList<>();
+        for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
+            if (!awsAccount.prohibitRDSCalls()) {
+                logger.info("Launching RDS AccountRDSSnapshotCleaning threads for account id: " + awsAccount.getAwsAccountId());
+                MyMonitorRDSSnapshotCleaner_.add(new MonitorRDSSnapshotCleaner(awsAccount));
+            }
+        }
+
+        for (int i = 0; i < MyMonitorRDSSnapshotCleaner_.size(); i++) {
+            MyMonitorRDSSnapshotCleanerThreads_.put("Thread_" + i, new Thread(MyMonitorRDSSnapshotCleaner_.get(i)));
+            MyMonitorRDSSnapshotCleanerThreads_.get("Thread_" + i).start();
+        }
+    }
+
+    private static void startRefreshAwsAccountRDSDataThreads() {
+        List<RefreshAwsAccountRDSData> MyRefreshAwsAccountRDSData_ = new ArrayList<>();
+        for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
+            if (!awsAccount.prohibitRDSCalls()) {
+                logger.info("Launching RefreshAwsAccountRDS threads for account id: " + awsAccount.getAwsAccountId());
+                MyRefreshAwsAccountRDSData_.add(new RefreshAwsAccountRDSData(awsAccount));
+            }
+        }
+
+        for (int i = 0; i < MyRefreshAwsAccountRDSData_.size(); i++) {
+            MyRefreshAwsAccountRDSDataThreads_.put("Thread_" + i, new Thread(MyRefreshAwsAccountRDSData_.get(i)));
+            MyRefreshAwsAccountRDSDataThreads_.get("Thread_" + i).start();
+        }
+    }
+    
+    private static void startRDSTagPropagatorThreads() {
+        List<MonitorRDSTagPropagator> MyMonitorRDSTagPropagator_ = new ArrayList<>();
+        for (AwsAccount awsAccount : ApplicationConfiguration.getAwsAccounts()) {
+            if (!awsAccount.prohibitRDSCalls()) {
+                logger.info("Launching RDS TagPropagator threads for account id: " + awsAccount.getAwsAccountId());
+                MyMonitorRDSTagPropagator_.add(new MonitorRDSTagPropagator(awsAccount));
+                
+            }
+        }
+
+        for (int i = 0; i < MyMonitorRDSTagPropagator_.size(); i++) {
+            MyMonitorRDSTagPropagatorThreads_.put("Thread_" + i, new Thread(MyMonitorRDSTagPropagator_.get(i)));
+            MyMonitorRDSTagPropagatorThreads_.get("Thread_" + i).start();
         }
     }
 

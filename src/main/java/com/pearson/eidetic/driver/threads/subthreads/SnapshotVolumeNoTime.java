@@ -290,7 +290,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             try {
                 setResourceTags(ec2Client, current_snap, tags_volume, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
-                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + current_snap.getVolumeId() + "\", stacktrace=\""
+                logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + current_snap.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 return false;
             }

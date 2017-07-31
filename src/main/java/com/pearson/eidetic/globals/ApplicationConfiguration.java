@@ -45,10 +45,18 @@ public class ApplicationConfiguration {
     private static Boolean eideticExpress_;
     private static Boolean eideticChecker_;
     private static Boolean amnesia_;
+    
     private static Boolean snapsPoller_;
     private static Boolean errorChecker_;
     private static Boolean tagChecker_;
+    
     private static Boolean volumeSynchronizer_;
+    
+    private static Boolean rdsAutomatedSnapshoter_;
+    private static Boolean rdsAutomatedChecker_;
+    private static Boolean rdsAutomatedCleaner_;
+    private static Boolean rdsAutomatedTagPropagator_;
+
 
     public static boolean initialize(String filePathAndFilename) {
 
@@ -92,6 +100,10 @@ public class ApplicationConfiguration {
             tagChecker_ = applicationConfiguration_.getBoolean("enable_instance_data_tag_checker", false);
             volumeSynchronizer_ = applicationConfiguration_.getBoolean("enable_volume_snapshot_synchronizer", false);
             syncServerHttpListenerPort_ = applicationConfiguration_.getInteger("synchronizer_http_port", 80);
+            rdsAutomatedSnapshoter_ = applicationConfiguration_.getBoolean("enable_rds_automated_snapshot", false);
+            rdsAutomatedChecker_ = applicationConfiguration_.getBoolean("enable_rds_automated_snapshot_checker", false);
+            rdsAutomatedCleaner_ = applicationConfiguration_.getBoolean("enable_rds_automated_snapshot_cleaner", false);
+            rdsAutomatedTagPropagator_ = applicationConfiguration_.getBoolean("enable_rds_automated_tag_propagator", false);
             return true;
         } catch (Exception e) {
             logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));
@@ -104,13 +116,15 @@ public class ApplicationConfiguration {
 
         List<AwsAccount> awsAccounts = new ArrayList<>();
 
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 20; i++) {
             String awsAccountNicknameKey = "aws_account_nickname_" + (i + 1);
             String awsAccountNicknameValue = applicationConfiguration_.getString(awsAccountNicknameKey, "Eidetic_Default");
             String awsAccountAccessKeyIdKey = "aws_account_access_key_id_" + (i + 1);
             String awsAccountAccessKeyIdValue = applicationConfiguration_.getString(awsAccountAccessKeyIdKey, null);
             String awsAccountAccessSecretKeyKey = "aws_account_access_key_secret_" + (i + 1);
             String awsAccountAccessSecretKeyValue = applicationConfiguration_.getString(awsAccountAccessSecretKeyKey, null);
+            String awsAccountProhibitRDSCallsKey = "aws_account_prohibit_rds_" + (i + 1);
+            Boolean awsAccountProhibitRDSCallsValue = applicationConfiguration_.getBoolean(awsAccountProhibitRDSCallsKey, false);
             
             if (awsAccountNicknameValue.contains("Eidetic_Default") && awsAccountAccessKeyIdValue == null && awsAccountAccessSecretKeyValue == null) {
                 continue;
@@ -120,7 +134,7 @@ public class ApplicationConfiguration {
             int awsMaxApiRequestsPerSecondValue = applicationConfiguration_.getInt(awsMaxApiRequestsPerSecondKey, 100);
 
             AwsAccount awsAccount = new AwsAccount((i + 1), awsAccountNicknameValue,
-                    awsAccountAccessKeyIdValue, awsAccountAccessSecretKeyValue, awsMaxApiRequestsPerSecondValue);
+                    awsAccountAccessKeyIdValue, awsAccountAccessSecretKeyValue, awsMaxApiRequestsPerSecondValue, awsAccountProhibitRDSCallsValue);
 
             if ((awsAccountAccessKeyIdValue != null) && (awsAccountAccessSecretKeyValue != null)) {
                 awsAccounts_.add(awsAccount);
@@ -189,6 +203,22 @@ public class ApplicationConfiguration {
     
     public static Integer getSyncServerHttpListenerPort() {
         return syncServerHttpListenerPort_;
+    }
+    
+    public static Boolean getRDSAutomatedSnapshoter() {
+        return rdsAutomatedSnapshoter_;
+    }
+    
+    public static Boolean getRDSAutomatedChecker() {
+        return rdsAutomatedChecker_;
+    }
+    
+    public static Boolean getRDSAutomatedCleaner() {
+        return rdsAutomatedCleaner_;
+    }
+    
+    public static Boolean getRDSAutomatedTagPropagator() {
+        return rdsAutomatedTagPropagator_;
     }
 
 }

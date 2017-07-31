@@ -49,8 +49,7 @@ public class EideticSubThreadMethods implements EideticSubThread {
     public List<Snapshot> getAllSnapshotsOfVolume(AmazonEC2Client ec2Client, Volume vol,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
 
-        if (ec2Client == null || vol == null) {
-            // logger.error("CAN'T BE NULL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        if (ec2Client == null || vol == null || numRetries == null || maxApiRequestsPerSecond == null || uniqueAwsAccountIdentifier == null) {
             return new ArrayList<>();
         }
 
@@ -246,7 +245,11 @@ public class EideticSubThreadMethods implements EideticSubThread {
                 uniqueAwsAccountIdentifier);
     }
 
-    public static int[] range(int start, int length) {
+    public static int[] range(Integer start, Integer length) {
+        if (start == null || length == null) {
+            throw new NullPointerException("Parameter start/length cannot be null");
+        }
+        
         if (length < 0) {
             int[] range = {};
             return range;
@@ -259,12 +262,20 @@ public class EideticSubThreadMethods implements EideticSubThread {
     }
 
     public int getMinutesBetweenNowAndSnapshot(Snapshot snapshot) {
+        if (snapshot == null) {
+            throw new NullPointerException("Parameter Snapshot cannot be null");
+        }
+        
         DateTime now = new DateTime();
         DateTime dt = new DateTime(snapshot.getStartTime());
         return Minutes.minutesBetween(dt, now).getMinutes();
     }
 
     public int getDaysBetweenNowAndSnapshot(Snapshot snapshot) {
+        if (snapshot == null) {
+            throw new NullPointerException("Parameter Snapshot cannot be null");
+        }
+        
         DateTime now = new DateTime();
         DateTime dt = new DateTime(snapshot.getStartTime());
         return Days.daysBetween(dt, now).getDays();
