@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SnapshotCleaner.class.getName());
 
     private Boolean isFinished_ = false;
     private AwsAccount awsAccount_ = null;
@@ -70,9 +70,9 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
 
                 Boolean success;
 
-                allSnapshotsClean(ec2Client);
+                allSnapshotsClean(region, ec2Client);
 
-                success = eideticClean(ec2Client);
+                success = eideticClean(region, ec2Client);
                 if (!success) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotCleaner workflow\"");
                 }
@@ -106,7 +106,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
         return ec2Client;
     }
 
-    public Boolean eideticClean(AmazonEC2Client ec2Client) {
+    public Boolean eideticClean(Region region, AmazonEC2Client ec2Client) {
         if (ec2Client == null) {
             return false;
         }
@@ -117,7 +117,8 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
         DescribeSnapshotsRequest describeSnapshotRequest
                 = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters);
         DescribeSnapshotsResult describeSnapshotsResult
-                = EC2ClientMethods.describeSnapshots(ec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        ec2Client,
                         describeSnapshotRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -138,7 +139,8 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 DescribeVolumesRequest describeVolumesRequest
                         = new DescribeVolumesRequest().withFilters(volfilters);
                 DescribeVolumesResult describeVolumeResult
-                        = EC2ClientMethods.describeVolumes(ec2Client,
+                        = EC2ClientMethods.describeVolumes(region,
+                                ec2Client,
                                 describeVolumesRequest,
                                 numRetries_,
                                 maxApiRequestsPerSecond_,
@@ -191,7 +193,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                     }
 
                     try {
-                        deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                        deleteSnapshot(region, ec2Client, null, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                     } catch (Exception e) {
                         logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                                 + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -202,7 +204,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                     if (timeSinceCreation > eideticCleanKeepDays_) {
                         //See if old vol still exists. If not, if snap is $eideticCleanKeepDays_ days old, delete.
                         try {
-                            deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                            deleteSnapshot(region, ec2Client, null, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                         } catch (Exception e) {
                             logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                                     + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -222,7 +224,8 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
         describeSnapshotRequest
                 = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters);
         describeSnapshotsResult
-                = EC2ClientMethods.describeSnapshots(ec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        ec2Client,
                         describeSnapshotRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -239,7 +242,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
                 }
 
                 try {
-                    deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    deleteSnapshot(region, ec2Client, null, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -254,7 +257,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
         return true;
     }
 
-    public Boolean allSnapshotsClean(AmazonEC2Client ec2Client) {
+    public Boolean allSnapshotsClean(Region region, AmazonEC2Client ec2Client) {
         if (ec2Client == null) {
             return false;
         }
@@ -265,7 +268,8 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
         DescribeSnapshotsRequest describeSnapshotRequest2
                 = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters2);
         DescribeSnapshotsResult describeSnapshotsResult2
-                = EC2ClientMethods.describeSnapshots(ec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        ec2Client,
                         describeSnapshotRequest2,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -276,7 +280,7 @@ public class SnapshotCleaner extends EideticSubThreadMethods implements Runnable
             Integer timeSinceCreation = getDaysBetweenNowAndSnapshot(snapshot);
             if (timeSinceCreation > allSnapshotCleanKeepDays_) {
                 try {
-                    deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    deleteSnapshot(region, ec2Client, null, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

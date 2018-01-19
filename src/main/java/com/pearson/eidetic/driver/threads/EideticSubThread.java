@@ -5,6 +5,7 @@
  */
 package com.pearson.eidetic.driver.threads;
 
+import com.amazonaws.regions.Region;
 import com.amazonaws.services.ec2.AmazonEC2Client;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.Snapshot;
@@ -21,7 +22,7 @@ public interface EideticSubThread {
     
     public boolean isFinished();
     
-    List<Snapshot> getAllSnapshotsOfVolume(AmazonEC2Client ec2Client, Volume vol, 
+    List<Snapshot> getAllSnapshotsOfVolume(Region region, AmazonEC2Client ec2Client, Volume vol, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier); 
     
     Collection<Tag> getResourceTags(Volume vol);
@@ -45,10 +46,10 @@ public interface EideticSubThread {
     
     int getDaysBetweenNowAndNewestSnapshot(List<Snapshot> sortedCompareList);
     
-    Snapshot createSnapshotOfVolume(AmazonEC2Client ec2Client, Volume vol, String description, 
+    Snapshot createSnapshotOfVolume(Region region, AmazonEC2Client ec2Client, Volume vol, String description, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier);
     
-    Snapshot createSnapshotOfVolume(AmazonEC2Client ec2Client, Volume vol, 
+    Snapshot createSnapshotOfVolume(Region region, AmazonEC2Client ec2Client, Volume vol, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier);
     
 

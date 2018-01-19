@@ -50,7 +50,7 @@ Optional: add extra parameter, "gRunAt" to "day" interval.
 
 where:
 
-- day: The interval must be set to "gday"
+- day: The interval must be set to "day"
 
 - y: the quantity of snapshots to retain, values range from a minimum of two and upwards
 
@@ -182,7 +182,7 @@ Eidetic : { "SyncSnapshot" : { "Retain" : "3", "Validate" : { "Cluster" : "graph
 Eidetic : { "CreateSnapshot" : { "Interval" : "day", "Retain" : "5",  "RunAt" : "09:30:00"}, "SyncSnapshot" : { "Retain" : "3" } }
 ```
 
-A sample http post using curl showcasing the correct syntax follows. The required parameters in the http post are accountid, region, and volumes (which is a comma separated list of volids). AWS accountid will be written to logs if the value is unknown or easily accessible. In application.properties, the port has been changed to 8080 for this example.
+A sample http post using curl showcasing the correct syntax follows. The required parameters in the http post are accountid, region, and volumes (which is a comma separated list of vol_ids). AWS accountid will be written to logs if the value is unknown or easily accessible. In application.properties, the port has been changed to 8080 for this example.
 
 `curl --data "accountid=912399967890&region=US_EAST_1&volumes=vol-9c314473,vol-9131447e,vol-6f314480,vol-0f3144e0" 127.0.0.1:8080/api/syncsnapshot`
 
@@ -233,4 +233,8 @@ This plugin will use the provided eidetic_snapshot_retain_days and all_snapshot_
 
 ### RDS Automated Tag Propagator
 
-This plugin is very useful when it comes to running in an RDS style environment. As of the writing of this README, clusters do not allow to be tagged in the console interface but can be tagged using APIs. As such, this plugin will copy any tags on an instance and put them on a cluster. Note an important function here in the RDS specific automation. If a instance is tagged and not the cluster, the instance will have a snapshot taken of it. If the instance and the cluster are both tagged, only the cluster will have a snapshot and not the instance. As such, if you have multiple instances in a cluster that are all tagged, there will only be one resulting snapshot from the cluster. The cluster tags will be from one of the instances, so it is important to ensure that all instances have the same tags or only one instance has a tag when using this tag propagator plugin's functionality. That functionality is specifcally, iterate through all tagged instances that are in a cluster and copy the currently selected instance's tags to the cluster's tags if they differ. 
+This plugin is very useful when it comes to running in an RDS style environment. As of the writing of this README, clusters do not allow to be tagged in the console interface but can be tagged using APIs. As such, this plugin will copy any tags on an instance and put them on a cluster. Note an important function here in the RDS specific automation. If an instance is tagged and not a cluster, the instance will have a snapshot taken of it. If the instance and the cluster are both tagged, only the cluster will have a snapshot and not the instance. As such, if you have multiple instances in a cluster that are all tagged, there will only be one resulting snapshot from the cluster. The cluster tags will be from one of the instances, so it is important to ensure that all instances have the same tags or only one instance has a tag when using this tag propagator plugin's functionality. That functionality is specifically, iterate through all tagged instances that are in a cluster and copy the currently selected instance's tags to the cluster's tags if they differ.
+
+### Caching
+
+When using Eidetic to cover thousands of EC2 volumes or RDS Instances, the amount of AWS API usage will escalate quite highly. This will run into multiple rate throttling issues from AWS, which may affect other tools.  With caching enabled on a per account basis, eidetic will use a TTL Cache to reduce API usage. Depending on the call, there is a reduction up to 99% on total API calls. This will make Eidetic less reactive to changes (new Eidetic tags, Eidetic tag changes, etc.) that happen in the AWS account, but will still work as expected.

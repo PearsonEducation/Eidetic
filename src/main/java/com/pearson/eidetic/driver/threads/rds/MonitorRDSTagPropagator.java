@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnable, MonitorRDS {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorRDSTagPropagator.class.getName());
 
     private final AwsAccount awsAccount_;
 
@@ -75,7 +75,8 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                             = new DescribeDBInstancesRequest();
 
                     DescribeDBInstancesResult describeDBInstancesResult
-                            = RDSClientMethods.describeDBInstances(rdsClient,
+                            = RDSClientMethods.describeDBInstances(region,
+                                    rdsClient,
                                     describeDBInstancesRequest,
                                     ApplicationConfiguration.getAwsCallRetryAttempts(),
                                     awsAccount_.getMaxApiRequestsPerSecond(),
@@ -87,7 +88,8 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                         describeDBInstancesRequest.setMarker(marker);
 
                         describeDBInstancesResult
-                                = RDSClientMethods.describeDBInstances(rdsClient,
+                                = RDSClientMethods.describeDBInstances(region,
+                                        rdsClient,
                                         describeDBInstancesRequest,
                                         ApplicationConfiguration.getAwsCallRetryAttempts(),
                                         awsAccount_.getMaxApiRequestsPerSecond(),
@@ -104,7 +106,8 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                             Threads.sleepMilliseconds(80);
                             String arn = String.format("arn:aws:rds:%s:%s:db:%s", region.getName(), awsAccount_.getAwsAccountId(), dbInstance.getDBInstanceIdentifier());
                             ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-                            List<com.amazonaws.services.rds.model.Tag> tags = RDSClientMethods.getTags(rdsClient,
+                            List<com.amazonaws.services.rds.model.Tag> tags = RDSClientMethods.getTags(region,
+                                    rdsClient,
                                     listTagsForResourceRequest,
                                     ApplicationConfiguration.getAwsCallRetryAttempts(),
                                     awsAccount_.getMaxApiRequestsPerSecond(),
@@ -125,7 +128,8 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                             }
 
                             DescribeDBClustersRequest describeDBClustersRequest = new DescribeDBClustersRequest().withDBClusterIdentifier(dbInstance.getDBClusterIdentifier());
-                            DescribeDBClustersResult describeDBClustersResult = RDSClientMethods.describeDBClusters(rdsClient,
+                            DescribeDBClustersResult describeDBClustersResult = RDSClientMethods.describeDBClusters(region,
+                                    rdsClient,
                                     describeDBClustersRequest,
                                     ApplicationConfiguration.getAwsCallRetryAttempts(),
                                     awsAccount_.getMaxApiRequestsPerSecond(),
@@ -136,7 +140,8 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                             while (marker != null) {
                                 describeDBClustersRequest.setMarker(marker);
 
-                                describeDBClustersResult = RDSClientMethods.describeDBClusters(rdsClient,
+                                describeDBClustersResult = RDSClientMethods.describeDBClusters(region,
+                                        rdsClient,
                                         describeDBClustersRequest,
                                         ApplicationConfiguration.getAwsCallRetryAttempts(),
                                         awsAccount_.getMaxApiRequestsPerSecond(),
@@ -151,7 +156,8 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                                 describeDBInstancesRequest.setMarker(marker);
 
                                 describeDBInstancesResult
-                                        = RDSClientMethods.describeDBInstances(rdsClient,
+                                        = RDSClientMethods.describeDBInstances(region,
+                                                rdsClient,
                                                 describeDBInstancesRequest,
                                                 ApplicationConfiguration.getAwsCallRetryAttempts(),
                                                 awsAccount_.getMaxApiRequestsPerSecond(),
@@ -167,7 +173,8 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                                 String clusterarn = String.format("arn:aws:rds:%s:%s:cluster:%s", region.getName(), awsAccount_.getAwsAccountId(), dbCluster.getDBClusterIdentifier());
 
                                 ListTagsForResourceRequest listTagsForResourceRequest2 = new ListTagsForResourceRequest().withResourceName(clusterarn);
-                                List<com.amazonaws.services.rds.model.Tag> tags2 = RDSClientMethods.getTags(rdsClient,
+                                List<com.amazonaws.services.rds.model.Tag> tags2 = RDSClientMethods.getTags(region, 
+                                        rdsClient,
                                         listTagsForResourceRequest2,
                                         ApplicationConfiguration.getAwsCallRetryAttempts(),
                                         awsAccount_.getMaxApiRequestsPerSecond(),
@@ -250,7 +257,7 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
                                         }
                                     }
 
-                                    setResourceTags(rdsClient, clusterarn, tags2, ApplicationConfiguration.getAwsCallRetryAttempts(),
+                                    setResourceTags(region, rdsClient, clusterarn, tags2, ApplicationConfiguration.getAwsCallRetryAttempts(),
                                             awsAccount_.getMaxApiRequestsPerSecond(),
                                             awsAccount_.getUniqueAwsAccountIdentifier());
                                 }
@@ -271,11 +278,12 @@ public class MonitorRDSTagPropagator extends MonitorRDSMethods implements Runnab
 
     }
 
-    public void setResourceTags(AmazonRDSClient rdsClient, String arn, Collection<Tag> tags,
+    public void setResourceTags(Region region, AmazonRDSClient rdsClient, String arn, Collection<Tag> tags,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         AddTagsToResourceRequest addTagsToResourceRequest = new AddTagsToResourceRequest().withResourceName(arn);
         addTagsToResourceRequest.setTags(tags);
-        RDSClientMethods.createTags(rdsClient,
+        RDSClientMethods.createTags(region,
+                rdsClient,
                 addTagsToResourceRequest,
                 numRetries,
                 maxApiRequestsPerSecond,

@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  */
 public class CopySnapshot extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(CopySnapshot.class.getName());
 
     private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
@@ -146,7 +146,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
 
                 AmazonEC2Client gotoec2Client = connect(gotoregion, awsAccessKeyId_, awsSecretKey_);
 
-                List<Snapshot> copy_snapshots = getCopySnapshots(vol, gotoec2Client,
+                List<Snapshot> copy_snapshots = getCopySnapshots(region_, vol, gotoec2Client,
                         numRetries_,
                         maxApiRequestsPerSecond_,
                         uniqueAwsAccountIdentifier_);
@@ -175,7 +175,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                 }
                 //End snapshot dec
 
-                List<Snapshot> int_snapshots = getIntSnapshots(ec2Client,
+                List<Snapshot> int_snapshots = getIntSnapshots(region_,
+                        ec2Client,
                         vol,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -218,7 +219,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                 }
 
                 //Need to get the snapshot object instead of id.
-                addTagsToNewCopySnapshot(gotoec2Client,
+                addTagsToNewCopySnapshot(region_,
+                        gotoec2Client,
                         newSnapshotId,
                         vol,
                         numRetries_,
@@ -227,7 +229,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
 
                 //End create new snapshot
                 //Start copypot snapshot clean up
-                List<Snapshot> del_snapshots = getDeleteSnapshots(gotoec2Client,
+                List<Snapshot> del_snapshots = getDeleteSnapshots(region_,
+                        gotoec2Client,
                         vol,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -243,7 +246,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
                 List<Snapshot> sortedDeleteList = new ArrayList<>(deletelist);
                 sortSnapshotsByDate(sortedDeleteList);
 
-                deleteSnapshots(gotoec2Client,
+                deleteSnapshots(region_,
+                        gotoec2Client,
                         sortedDeleteList,
                         keep,
                         numRetries_,
@@ -469,7 +473,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         return copycomparelist;
     }
 
-    private List<Snapshot> getCopySnapshots(Volume vol, AmazonEC2Client gotoec2Client, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
+    private List<Snapshot> getCopySnapshots(Region region, Volume vol, AmazonEC2Client gotoec2Client, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
         String temptag = "tag:Eidetic-CopySnapshot";
         Filter[] copyfilters = new Filter[1];
         copyfilters[0] = new Filter().withName(temptag).withValues(vol.getVolumeId());
@@ -477,7 +481,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         DescribeSnapshotsRequest describecopySnapshotsRequest
                 = new DescribeSnapshotsRequest().withFilters(copyfilters);
         DescribeSnapshotsResult describecopySnapshotsResult
-                = EC2ClientMethods.describeSnapshots(gotoec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        gotoec2Client,
                         describecopySnapshotsRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -486,7 +491,7 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         return describecopySnapshotsResult.getSnapshots();
     }
 
-    private List<Snapshot> getIntSnapshots(AmazonEC2Client ec2Client, Volume vol, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
+    private List<Snapshot> getIntSnapshots(Region region, AmazonEC2Client ec2Client, Volume vol, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
         Filter[] filters = new Filter[2];
         filters[0] = new Filter().withName("volume-id").withValues(vol.getVolumeId());
         filters[1] = new Filter().withName("status").withValues("completed");
@@ -494,7 +499,8 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         DescribeSnapshotsRequest describeSnapshotsRequest
                 = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters);
         DescribeSnapshotsResult describeSnapshotsResult
-                = EC2ClientMethods.describeSnapshots(ec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        ec2Client,
                         describeSnapshotsRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -558,14 +564,15 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         return copySnapshotResult.getSnapshotId();
     }
 
-    private void addTagsToNewCopySnapshot(AmazonEC2Client gotoec2Client, String newSnapshotId, Volume vol, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
+    private void addTagsToNewCopySnapshot(Region region, AmazonEC2Client gotoec2Client, String newSnapshotId, Volume vol, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
         Filter[] newfilters = new Filter[1];
         newfilters[0] = new Filter().withName("snapshot-id").withValues(newSnapshotId);
 
         DescribeSnapshotsRequest describeNewSnapshotsRequest
                 = new DescribeSnapshotsRequest().withFilters(newfilters);
         DescribeSnapshotsResult describeNewSnapshotsResult
-                = EC2ClientMethods.describeSnapshots(gotoec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        gotoec2Client,
                         describeNewSnapshotsRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -595,13 +602,14 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         }
     }
 
-    private List<Snapshot> getDeleteSnapshots(AmazonEC2Client gotoec2Client, Volume vol, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
+    private List<Snapshot> getDeleteSnapshots(Region region, AmazonEC2Client gotoec2Client, Volume vol, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
         String temptag = "tag:Eidetic-CopySnapshot";
         Filter[] copyfilters = new Filter[1];
         copyfilters[0] = new Filter().withName(temptag).withValues(vol.getVolumeId());
 
         DescribeSnapshotsRequest describecopySnapshotsRequest = new DescribeSnapshotsRequest().withFilters(copyfilters);
-        DescribeSnapshotsResult describecopySnapshotsResult = EC2ClientMethods.describeSnapshots(gotoec2Client,
+        DescribeSnapshotsResult describecopySnapshotsResult = EC2ClientMethods.describeSnapshots(region, 
+                gotoec2Client,
                 describecopySnapshotsRequest,
                 numRetries_,
                 maxApiRequestsPerSecond_,
@@ -631,12 +639,12 @@ public class CopySnapshot extends EideticSubThreadMethods implements Runnable, E
         return deletelist;
     }
 
-    private void deleteSnapshots(AmazonEC2Client gotoec2Client, List<Snapshot> sortedDeleteList, Integer keep, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
+    private void deleteSnapshots(Region region, AmazonEC2Client gotoec2Client, List<Snapshot> sortedDeleteList, Integer keep, Integer numRetries_, Integer maxApiRequestsPerSecond_, String uniqueAwsAccountIdentifier_) {
         int delta = sortedDeleteList.size() - keep;
 
         for (int i : range(0, delta - 1)) {
             try {
-                deleteSnapshot(gotoec2Client, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                deleteSnapshot(region, gotoec2Client, null, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

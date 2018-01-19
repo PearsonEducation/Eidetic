@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class MonitorSnapshotVolumeNoTime extends MonitorMethods implements Runnable, Monitor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorSnapshotVolumeNoTime.class.getName());
 
     private final AwsAccount awsAccount_;
 

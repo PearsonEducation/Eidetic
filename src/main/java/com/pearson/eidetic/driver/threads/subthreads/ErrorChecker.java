@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ErrorChecker extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(ErrorChecker.class.getName());
 
     private Boolean isFinished_ = false;
     private AwsAccount awsAccount_ = null;
@@ -62,14 +62,14 @@ public class ErrorChecker extends EideticSubThreadMethods implements Runnable, E
                 com.amazonaws.regions.Region region = entry.getKey();
                 AmazonEC2Client ec2Client = connect(region, awsAccount_.getAwsAccessKeyId(), awsAccount_.getAwsSecretKey());
 
-                List<Snapshot> error_snapshots = getAllErrorSnapshots(ec2Client);
+                List<Snapshot> error_snapshots = getAllErrorSnapshots(region, ec2Client);
                 if (error_snapshots.isEmpty()) {
                     continue;
                 }
 
                 loggerOuputSnapshotErrors(error_snapshots, region);
 
-                deleteSnapshotErrors(ec2Client, error_snapshots);
+                deleteSnapshotErrors(region, ec2Client, error_snapshots);
                 
                 ec2Client.shutdown();
 
@@ -101,14 +101,15 @@ public class ErrorChecker extends EideticSubThreadMethods implements Runnable, E
         return ec2Client;
     }
 
-    private List<Snapshot> getAllErrorSnapshots(AmazonEC2Client ec2Client) {
+    private List<Snapshot> getAllErrorSnapshots(Region region, AmazonEC2Client ec2Client) {
         Filter[] filters = new Filter[1];
         filters[0] = new Filter().withName("status").withValues("error");
 
         DescribeSnapshotsRequest describeSnapshotRequest
                 = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters);
         DescribeSnapshotsResult describeSnapshotsResult
-                = EC2ClientMethods.describeSnapshots(ec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        ec2Client,
                         describeSnapshotRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -123,10 +124,10 @@ public class ErrorChecker extends EideticSubThreadMethods implements Runnable, E
         }
     }
 
-    private void deleteSnapshotErrors(AmazonEC2Client ec2Client, List<Snapshot> error_snapshots) {
+    private void deleteSnapshotErrors(Region region, AmazonEC2Client ec2Client, List<Snapshot> error_snapshots) {
         for (Snapshot snapshot : error_snapshots) {
             try {
-                deleteSnapshot(ec2Client, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                deleteSnapshot(region, ec2Client, null, snapshot, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + snapshot.getSnapshotId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

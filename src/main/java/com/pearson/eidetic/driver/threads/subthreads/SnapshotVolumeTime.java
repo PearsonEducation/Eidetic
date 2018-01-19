@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SnapshotVolumeTime extends EideticSubThreadMethods implements Runnable, EideticSubThread {
     
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SnapshotVolumeTime.class.getName());
     
     private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
@@ -94,12 +94,12 @@ public class SnapshotVolumeTime extends EideticSubThreadMethods implements Runna
                 }
 
                 Boolean success;
-                success = snapshotCreation(ec2Client, vol, period, date);
+                success = snapshotCreation(region_, ec2Client, vol, period, date);
                 if (!success) {
                     continue;
                 }
                 
-                snapshotDeletion(ec2Client, vol, period, keep);
+                snapshotDeletion(region_, ec2Client, vol, period, keep);
                 
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotVolumeTime workflow\", stacktrace=\""
@@ -200,7 +200,7 @@ public class SnapshotVolumeTime extends EideticSubThreadMethods implements Runna
         return keep;
     }
     
-    public boolean snapshotCreation(AmazonEC2Client ec2Client, Volume vol, String period, Date date) {
+    public boolean snapshotCreation(Region region, AmazonEC2Client ec2Client, Volume vol, String period, Date date) {
         if ((date == null) | (ec2Client == null) | (vol == null) | (period == null)) {
             return false;
         }
@@ -230,7 +230,7 @@ public class SnapshotVolumeTime extends EideticSubThreadMethods implements Runna
             
             Snapshot current_snap;
             try {
-                current_snap = createSnapshotOfVolume(ec2Client, vol, description, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                current_snap = createSnapshotOfVolume(region, ec2Client, vol, description, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -254,13 +254,13 @@ public class SnapshotVolumeTime extends EideticSubThreadMethods implements Runna
         return true;
     }
     
-    public boolean snapshotDeletion(AmazonEC2Client ec2Client, Volume vol, String period, Integer keep) {
+    public boolean snapshotDeletion(Region region, AmazonEC2Client ec2Client, Volume vol, String period, Integer keep) {
         if ((keep == null) || (ec2Client == null) || (vol == null) || (period == null)) {
             return false;
         }
         
         try {
-            List<Snapshot> del_snapshots = getAllSnapshotsOfVolume(ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<Snapshot> del_snapshots = getAllSnapshotsOfVolume(region, ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             
             List<Snapshot> deletelist = new ArrayList();
             
@@ -284,7 +284,7 @@ public class SnapshotVolumeTime extends EideticSubThreadMethods implements Runna
             
             for (int i : range(0, delta - 1)) {
                 try {
-                    deleteSnapshot(ec2Client, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    deleteSnapshot(region, ec2Client, vol, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

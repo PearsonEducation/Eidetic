@@ -228,7 +228,7 @@ public class Driver {
 
                 startRefreshAwsAccountVolumesThreads();
 
-                Threads.sleepMinutes(5);
+                Threads.sleepMinutes(10);
 
             } catch (Exception e) {
                 logger.error(e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e));

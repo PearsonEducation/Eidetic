@@ -49,7 +49,7 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
     //check to see if data volume has eidetic tags
     //apply "default eidetictag" from application.properties
     //log error volume did not have tag
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(TagChecker.class.getName());
 
     private Boolean isFinished_ = null;
     private AwsAccount awsAccount_ = null;
@@ -82,12 +82,12 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
                 com.amazonaws.regions.Region region = entry.getKey();
                 AmazonEC2Client ec2Client = connect(region, awsAccount_.getAwsAccessKeyId(), awsAccount_.getAwsSecretKey());
 
-                List<Instance> instances = getAllInstancesWithDataTag(ec2Client);
+                List<Instance> instances = getAllInstancesWithDataTag(region, ec2Client);
                 if (instances.isEmpty()) {
                     continue;
                 }
 
-                List<Volume> volumesWithNoEidetic = checkVolumes(ec2Client, instances);
+                List<Volume> volumesWithNoEidetic = checkVolumes(region, ec2Client, instances);
                 if (volumesWithNoEidetic.isEmpty()) {
                     continue;
                 }
@@ -124,14 +124,15 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
         return ec2Client;
     }
 
-    private List<Instance> getAllInstancesWithDataTag(AmazonEC2Client ec2Client) {
+    private List<Instance> getAllInstancesWithDataTag(Region region, AmazonEC2Client ec2Client) {
         Filter[] filters = new Filter[1];
         filters[0] = new Filter().withName("tag-key").withValues("Data");
 
         DescribeInstancesRequest describeInstanceRequest
                 = new DescribeInstancesRequest().withFilters(filters);
         DescribeInstancesResult describeInstancesResult
-                = EC2ClientMethods.describeInstances(ec2Client,
+                = EC2ClientMethods.describeInstances(region, 
+                        ec2Client,
                         describeInstanceRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -145,7 +146,7 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
         return instances;
     }
 
-    private List<Volume> checkVolumes(AmazonEC2Client ec2Client, List<Instance> instances) {
+    private List<Volume> checkVolumes(Region region, AmazonEC2Client ec2Client, List<Instance> instances) {
         List<Volume> volumesWithNoTags = new ArrayList();
 
         /*
@@ -175,7 +176,7 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
          If anything remians in the instance set 
         
          */
-        List<Volume> volumes = getEideticVolumes(ec2Client);
+        List<Volume> volumes = getEideticVolumes(region, ec2Client);
         //if (volumes.isEmpty()) {
         //return volumesWithNoTags;
         //}
@@ -278,7 +279,8 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
             DescribeVolumesRequest describeVolumesRequest
                     = new DescribeVolumesRequest().withVolumeIds(i);
             DescribeVolumesResult describeVolumeResult
-                    = EC2ClientMethods.describeVolumes(ec2Client,
+                    = EC2ClientMethods.describeVolumes(region,
+                            ec2Client,
                             describeVolumesRequest,
                             numRetries_,
                             maxApiRequestsPerSecond_,
@@ -298,14 +300,15 @@ public class TagChecker extends EideticSubThreadMethods implements Runnable, Eid
         return volumesWithNoTags;
     }
 
-    private List<Volume> getEideticVolumes(AmazonEC2Client ec2Client) {
+    private List<Volume> getEideticVolumes(Region region, AmazonEC2Client ec2Client) {
         Filter[] filters = new Filter[1];
         filters[0] = new Filter().withName("tag-key").withValues("Eidetic");
 
         DescribeVolumesRequest describeVolumesRequest
                 = new DescribeVolumesRequest().withFilters(filters);
         DescribeVolumesResult describeVolumeResult
-                = EC2ClientMethods.describeVolumes(ec2Client,
+                = EC2ClientMethods.describeVolumes(region,
+                        ec2Client,
                         describeVolumesRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,

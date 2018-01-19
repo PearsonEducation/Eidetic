@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorSnapshotCleaner extends MonitorMethods implements Runnable, Monitor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorSnapshotCleaner.class.getName());
 
     private final AwsAccount awsAccount_;
 

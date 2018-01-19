@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class MonitorRDSSnapshotNoTime extends MonitorRDSMethods implements Runnable, MonitorRDS {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorRDSSnapshotNoTime.class.getName());
 
     private final AwsAccount awsAccount_;
 

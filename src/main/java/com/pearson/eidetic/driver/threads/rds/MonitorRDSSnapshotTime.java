@@ -54,7 +54,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnable, MonitorRDS {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorRDSSnapshotTime.class.getName());
 
     private final AwsAccount awsAccount_;
 
@@ -455,7 +455,8 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
             } else {
                 String arn = String.format("arn:aws:rds:%s:%s:db:%s", region.getName(), awsAccount_.getAwsAccountId(), dbInstance.getDBInstanceIdentifier());
                 ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-                tags = RDSClientMethods.getTags(rdsClient,
+                tags = RDSClientMethods.getTags(region,
+                        rdsClient,
                         listTagsForResourceRequest,
                         ApplicationConfiguration.getAwsCallRetryAttempts(),
                         awsAccount_.getMaxApiRequestsPerSecond(),
@@ -510,7 +511,8 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
             } else {
                 String arn = String.format("arn:aws:rds:%s:%s:cluster:%s", region.getName(), awsAccount_.getAwsAccountId(), dbCluster.getDBClusterIdentifier());
                 ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-                tags = RDSClientMethods.getTags(rdsClient,
+                tags = RDSClientMethods.getTags(region,
+                        rdsClient,
                         listTagsForResourceRequest,
                         ApplicationConfiguration.getAwsCallRetryAttempts(),
                         awsAccount_.getMaxApiRequestsPerSecond(),
@@ -739,7 +741,8 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
         JSONObject createSnapshot = new JSONObject();
         String arn = String.format("arn:aws:rds:%s:%s:db:%s", region.getName(), awsAccount_.getAwsAccountId(), dbInstance.getDBInstanceIdentifier());
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        List<Tag> tags = RDSClientMethods.getTags(amazonRDSClient,
+        List<Tag> tags = RDSClientMethods.getTags(region,
+                amazonRDSClient,
                 listTagsForResourceRequest,
                 ApplicationConfiguration.getAwsCallRetryAttempts(),
                 awsAccount_.getMaxApiRequestsPerSecond(),
@@ -772,7 +775,8 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
         JSONObject createSnapshot = new JSONObject();
         String arn = String.format("arn:aws:rds:%s:%s:cluster:%s", region.getName(), awsAccount_.getAwsAccountId(), dbCluster.getDBClusterIdentifier());
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        List<Tag> tags = RDSClientMethods.getTags(amazonRDSClient,
+        List<Tag> tags = RDSClientMethods.getTags(region,
+                amazonRDSClient,
                 listTagsForResourceRequest,
                 ApplicationConfiguration.getAwsCallRetryAttempts(),
                 awsAccount_.getMaxApiRequestsPerSecond(),
@@ -960,7 +964,7 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
         }
         try {
 
-            List<DBSnapshot> int_snapshots = getAllDBSnapshotsOfDBInstance(rdsClient, dbInstance, ApplicationConfiguration.getAwsCallRetryAttempts(),
+            List<DBSnapshot> int_snapshots = getAllDBSnapshotsOfDBInstance(region, rdsClient, dbInstance, ApplicationConfiguration.getAwsCallRetryAttempts(),
                     awsAccount_.getMaxApiRequestsPerSecond(),
                     awsAccount_.getUniqueAwsAccountIdentifier());
 
@@ -973,7 +977,7 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
 
                 //getResourceTags(AmazonRDSClient rdsClient, String arn, Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier)
                 String arn = String.format("arn:aws:rds:%s:%s:snapshot:%s", region.getName(), awsAccount_.getAwsAccountId(), snapshot.getDBSnapshotIdentifier());
-                Collection<Tag> tags_dbSnapshot = getResourceTags(rdsClient, arn, ApplicationConfiguration.getAwsCallRetryAttempts(),
+                Collection<Tag> tags_dbSnapshot = getResourceTags(region, rdsClient, arn, ApplicationConfiguration.getAwsCallRetryAttempts(),
                         awsAccount_.getMaxApiRequestsPerSecond(),
                         awsAccount_.getUniqueAwsAccountIdentifier());
 
@@ -1034,7 +1038,7 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
         }
         try {
 
-            List<DBClusterSnapshot> int_snapshots = getAllDBClusterSnapshotsOfDBCluster(rdsClient, dbCluster, ApplicationConfiguration.getAwsCallRetryAttempts(),
+            List<DBClusterSnapshot> int_snapshots = getAllDBClusterSnapshotsOfDBCluster(region, rdsClient, dbCluster, ApplicationConfiguration.getAwsCallRetryAttempts(),
                     awsAccount_.getMaxApiRequestsPerSecond(),
                     awsAccount_.getUniqueAwsAccountIdentifier());
 
@@ -1047,7 +1051,7 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
                 }
 
                 String arn = String.format("arn:aws:rds:%s:%s:cluster-snapshot:%s", region.getName(), awsAccount_.getAwsAccountId(), snapshot.getDBClusterSnapshotIdentifier());
-                Collection<Tag> tags_dbClusterSnapshot = getResourceTags(rdsClient, arn, ApplicationConfiguration.getAwsCallRetryAttempts(),
+                Collection<Tag> tags_dbClusterSnapshot = getResourceTags(region, rdsClient, arn, ApplicationConfiguration.getAwsCallRetryAttempts(),
                         awsAccount_.getMaxApiRequestsPerSecond(),
                         awsAccount_.getUniqueAwsAccountIdentifier());
                 DBClusterSnapshotTags_.get(region).put(snapshot, tags_dbClusterSnapshot);
@@ -1098,21 +1102,23 @@ public class MonitorRDSSnapshotTime extends MonitorRDSMethods implements Runnabl
         return true;
     }
 
-    public Collection<Tag> getResourceTags(AmazonRDSClient rdsClient, String arn, Integer numRetries,
+    public Collection<Tag> getResourceTags(Region region, AmazonRDSClient rdsClient, String arn, Integer numRetries,
             Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        return RDSClientMethods.getTags(rdsClient,
+        return RDSClientMethods.getTags(region,
+                rdsClient,
                 listTagsForResourceRequest,
                 numRetries,
                 maxApiRequestsPerSecond,
                 uniqueAwsAccountIdentifier).getTagList();
     }
 
-    public void setResourceTags(AmazonRDSClient rdsClient, String arn, Collection<Tag> tags,
+    public void setResourceTags(Region region, AmazonRDSClient rdsClient, String arn, Collection<Tag> tags,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         AddTagsToResourceRequest addTagsToResourceRequest = new AddTagsToResourceRequest().withResourceName(arn);
         addTagsToResourceRequest.setTags(tags);
-        RDSClientMethods.createTags(rdsClient,
+        RDSClientMethods.createTags(region,
+                rdsClient,
                 addTagsToResourceRequest,
                 numRetries,
                 maxApiRequestsPerSecond,

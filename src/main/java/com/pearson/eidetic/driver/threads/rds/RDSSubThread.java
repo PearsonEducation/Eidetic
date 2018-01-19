@@ -5,6 +5,7 @@
  */
 package com.pearson.eidetic.driver.threads.rds;
 
+import com.amazonaws.regions.Region;
 import com.amazonaws.services.rds.AmazonRDSClient;
 import com.amazonaws.services.rds.model.DBCluster;
 import com.amazonaws.services.rds.model.DBClusterSnapshot;
@@ -21,16 +22,16 @@ import java.util.List;
 public interface RDSSubThread {
         public boolean isFinished();
     
-    List<DBSnapshot> getAllDBSnapshotsOfDBInstance(AmazonRDSClient rdsClient, DBInstance dbInstance, 
+    List<DBSnapshot> getAllDBSnapshotsOfDBInstance(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier); 
     
-    List<DBClusterSnapshot> getAllDBClusterSnapshotsOfDBCluster(AmazonRDSClient rdsClient, DBCluster dbCluster, 
+    List<DBClusterSnapshot> getAllDBClusterSnapshotsOfDBCluster(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier);
     
-    Collection<Tag> getResourceTags(AmazonRDSClient rdsClient, String arn, Integer numRetries, 
+    Collection<Tag> getResourceTags(Region region, AmazonRDSClient rdsClient, String arn, Integer numRetries, 
             Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier);
     
-    void setResourceTags(AmazonRDSClient rdsClient, String arn, Collection<Tag> tags, 
+    void setResourceTags(Region region, AmazonRDSClient rdsClient, String arn, Collection<Tag> tags, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier);
     
     void sortDBSnapshotsByDate(List<DBSnapshot> comparelist);
@@ -45,10 +46,10 @@ public interface RDSSubThread {
     
     int getDaysBetweenNowAndNewestDBClusterSnapshot(List<DBClusterSnapshot> sortedCompareList);
     
-    DBSnapshot createDBSnapshotOfDBInstance(AmazonRDSClient rdsClient, DBInstance dbInstance, 
+    DBSnapshot createDBSnapshotOfDBInstance(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier);
     
-    DBClusterSnapshot createDBClusterSnapshotOfDBCluster(AmazonRDSClient rdsClient, DBCluster dbCluster, 
+    DBClusterSnapshot createDBClusterSnapshotOfDBCluster(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster, 
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier);
     
 

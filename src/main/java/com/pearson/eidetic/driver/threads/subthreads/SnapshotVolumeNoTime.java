@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SnapshotVolumeNoTime.class.getName());
 
     private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
@@ -92,17 +92,17 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
                 }
 
                 Boolean success;
-                success = snapshotDecision(ec2Client, vol, period);
+                success = snapshotDecision(region_, ec2Client, vol, period);
                 if (!success) {
                     continue;
                 }
 
-                success = snapshotCreation(ec2Client, vol, period, date);
+                success = snapshotCreation(region_, ec2Client, vol, period, date);
                 if (!success) {
                     continue;
                 }
 
-                snapshotDeletion(ec2Client, vol, period, keep);
+                snapshotDeletion(region_, ec2Client, vol, period, keep);
 
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in SnapshotVolumeNoTime workflow\", stacktrace=\""
@@ -204,13 +204,13 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
         return keep;
     }
 
-    public boolean snapshotDecision(AmazonEC2Client ec2Client, Volume vol, String period) {
+    public boolean snapshotDecision(Region region, AmazonEC2Client ec2Client, Volume vol, String period) {
         if ((ec2Client == null) || (vol == null) || (period == null)) {
             return false;
         }
         try {
 
-            List<Snapshot> int_snapshots = getAllSnapshotsOfVolume(ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<Snapshot> int_snapshots = getAllSnapshotsOfVolume(region, ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
 
             List<Snapshot> comparelist = new ArrayList();
 
@@ -250,7 +250,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
         return true;
     }
 
-    public boolean snapshotCreation(AmazonEC2Client ec2Client, Volume vol, String period, Date date) {
+    public boolean snapshotCreation(Region region, AmazonEC2Client ec2Client, Volume vol, String period, Date date) {
         if ((date == null) || (ec2Client == null) || (vol == null) || (period == null)) {
             return false;
         }
@@ -280,7 +280,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
             
             Snapshot current_snap;
             try {
-                current_snap = createSnapshotOfVolume(ec2Client, vol, description, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                current_snap = createSnapshotOfVolume(region, ec2Client, vol, description, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
                 logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error creating snapshot from volume\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -304,13 +304,13 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
         return true;
     }
 
-    public boolean snapshotDeletion(AmazonEC2Client ec2Client, Volume vol, String period, Integer keep) {
+    public boolean snapshotDeletion(Region region, AmazonEC2Client ec2Client, Volume vol, String period, Integer keep) {
         if ((keep == null) || (ec2Client == null) || (vol == null) || (period == null)) {
             return false;
         }
 
         try {
-            List<Snapshot> del_snapshots = getAllSnapshotsOfVolume(ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<Snapshot> del_snapshots = getAllSnapshotsOfVolume(region, ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
 
             List<Snapshot> deletelist = new ArrayList();
 
@@ -334,7 +334,7 @@ public class SnapshotVolumeNoTime extends EideticSubThreadMethods implements Run
 
             for (int i : range(0, delta - 1)) {
                 try {
-                    deleteSnapshot(ec2Client, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    deleteSnapshot(region, ec2Client, vol, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
