@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements Runnable, RDSSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(RDSSnapshotDBClusterNoTime.class.getName());
 
     private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
@@ -73,7 +73,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
             try {
                 Date date = new java.util.Date();
 
-                JSONObject eideticParameters = getIntTagValue(rdsClient, dbCluster);
+                JSONObject eideticParameters = getIntTagValue(region_, rdsClient, dbCluster);
                 if (eideticParameters == null) {
                     continue;
                 }
@@ -89,17 +89,17 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
                 }
 
                 Boolean success;
-                success = snapshotDecision(rdsClient, dbCluster, period);
+                success = snapshotDecision(region_, rdsClient, dbCluster, period);
                 if (!success) {
                     continue;
                 }
 
-                success = snapshotCreation(rdsClient, dbCluster, period, date);
+                success = snapshotCreation(region_, rdsClient, dbCluster, period, date);
                 if (!success) {
                     continue;
                 }
 
-                snapshotDeletion(rdsClient, dbCluster, period, keep);
+                snapshotDeletion(region_, rdsClient, dbCluster, period, keep);
 
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in RDSSnapshotDBClusterNoTime workflow\", stacktrace=\""
@@ -131,14 +131,15 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
         return rdsClient;
     }
 
-    public JSONObject getIntTagValue(AmazonRDSClient amazonRDSClient, DBCluster dbCluster) {
+    public JSONObject getIntTagValue(Region region, AmazonRDSClient amazonRDSClient, DBCluster dbCluster) {
         if (dbCluster == null) {
             return null;
         }
 
         String arn = String.format("arn:aws:rds:%s:%s:cluster:%s", region_.getName(), awsAccountId_, dbCluster.getDBClusterIdentifier());
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        List<Tag> tags = RDSClientMethods.getTags(amazonRDSClient,
+        List<Tag> tags = RDSClientMethods.getTags(region,
+                amazonRDSClient,
                 listTagsForResourceRequest,
                 ApplicationConfiguration.getAwsCallRetryAttempts(),
                 maxApiRequestsPerSecond_,
@@ -216,13 +217,13 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
         return keep;
     }
 
-    public boolean snapshotDecision(AmazonRDSClient rdsClient, DBCluster dbCluster, String period) {
+    public boolean snapshotDecision(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster, String period) {
         if ((rdsClient == null) || (dbCluster == null) || (period == null)) {
             return false;
         }
         try {
 
-            List<DBClusterSnapshot> int_snapshots = getAllDBClusterSnapshotsOfDBCluster(rdsClient, dbCluster, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<DBClusterSnapshot> int_snapshots = getAllDBClusterSnapshotsOfDBCluster(region, rdsClient, dbCluster, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
 
             List<DBClusterSnapshot> comparelist = new ArrayList();
 
@@ -232,7 +233,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
                 }
                 //getResourceTags(AmazonRDSClient rdsClient, String arn, Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier)
                 String arn = String.format("arn:aws:rds:%s:%s:cluster-snapshot:%s", region_.getName(), awsAccountId_, snapshot.getDBClusterSnapshotIdentifier());
-                Collection<Tag> tags_dbClusterSnapshot = getResourceTags(rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                Collection<Tag> tags_dbClusterSnapshot = getResourceTags(region, rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 DBClusterSnapshotTags_.put(snapshot, tags_dbClusterSnapshot);
                 String sndesc = null;
                 for (Tag tag : tags_dbClusterSnapshot) {
@@ -281,7 +282,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
         return true;
     }
 
-    public boolean snapshotCreation(AmazonRDSClient rdsClient, DBCluster dbCluster, String period, Date date) {
+    public boolean snapshotCreation(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster, String period, Date date) {
         if ((date == null) || (rdsClient == null) || (dbCluster == null) || (period == null)) {
             return false;
         }
@@ -303,7 +304,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
                 tags = DBClusterTags_.get(dbCluster);
             } else {
                 String arn = String.format("arn:aws:rds:%s:%s:cluster:%s", region_.getName(), awsAccountId_, dbCluster.getDBClusterIdentifier());
-                tags = getResourceTags(rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                tags = getResourceTags(region, rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 DBClusterTags_.put(dbCluster, tags);
             }
 
@@ -321,7 +322,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
             DBClusterSnapshot current_snap;
             try {
                 //createDBClusterSnapshotOfDBCluster(AmazonRDSClient rdsClient, DBCluster dbCluster, Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier
-                current_snap = createDBClusterSnapshotOfDBCluster(rdsClient, dbCluster, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                current_snap = createDBClusterSnapshotOfDBCluster(region, rdsClient, dbCluster, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Info\", Info=\"Creating snapshot from dbCluster\", DBCluster_Identifier=\"" + dbCluster.getDBClusterIdentifier() + "\", \"snapshot\"=\"" + current_snap.getDBClusterSnapshotIdentifier() + "\"");
             } catch (Exception e) {
                 logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error creating snapshot from dbCluster\", DBCluster_Identifier=\"" + dbCluster.getDBClusterIdentifier() + "\", stacktrace=\""
@@ -345,7 +346,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
 
             try {
                 String arn = String.format("arn:aws:rds:%s:%s:cluster-snapshot:%s", region_.getName(), awsAccountId_, current_snap.getDBClusterSnapshotIdentifier());
-                setResourceTags(rdsClient, arn, tags, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                setResourceTags(region, rdsClient, arn, tags, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + current_snap.getDBClusterSnapshotIdentifier() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -363,13 +364,13 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
         return true;
     }
 
-    public boolean snapshotDeletion(AmazonRDSClient rdsClient, DBCluster dbCluster, String period, Integer keep) {
+    public boolean snapshotDeletion(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster, String period, Integer keep) {
         if ((keep == null) || (rdsClient == null) || (dbCluster == null) || (period == null)) {
             return false;
         }
 
         try {
-            List<DBClusterSnapshot> del_snapshots = getAllDBClusterSnapshotsOfDBCluster(rdsClient, dbCluster, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<DBClusterSnapshot> del_snapshots = getAllDBClusterSnapshotsOfDBCluster(region, rdsClient, dbCluster, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
 
             List<DBClusterSnapshot> deletelist = new ArrayList();
 
@@ -383,7 +384,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
                     tags = DBClusterSnapshotTags_.get(snapshot);
                 } else {
                     String arn = String.format("arn:aws:rds:%s:%s:snapshot:%s", region_.getName(), awsAccountId_, snapshot.getDBClusterSnapshotIdentifier());
-                    tags = getResourceTags(rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    tags = getResourceTags(region, rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                     DBClusterSnapshotTags_.put(snapshot, tags);
                 }
 
@@ -420,7 +421,7 @@ public class RDSSnapshotDBClusterNoTime extends RDSSubThreadMethods implements R
             for (int i : range(0, delta - 1)) {
                 try {
                     logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Info\", Info=\"Deleting snapshot from dbCluster\", DBCluster_Identifier=\"" + sortedDeleteList.get(i).getDBClusterIdentifier() + "\", \"dbClusterSnapshot\"=\"" + sortedDeleteList.get(i).getDBClusterSnapshotIdentifier() + "\"");
-                    deleteDBClusterSnapshot(rdsClient, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    deleteDBClusterSnapshot(region, rdsClient, dbCluster, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getDBClusterSnapshotIdentifier() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

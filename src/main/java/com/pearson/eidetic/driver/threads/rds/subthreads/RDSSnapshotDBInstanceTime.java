@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Runnable, RDSSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(RDSSnapshotDBInstanceTime.class.getName());
 
     private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
@@ -73,7 +73,7 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
         for (DBInstance dbInstance : DBInstanceTime_) {
             try {
                 Date date = new java.util.Date();
-                JSONObject eideticParameters = getIntTagValue(rdsClient, dbInstance);
+                JSONObject eideticParameters = getIntTagValue(region_, rdsClient, dbInstance);
                 if (eideticParameters == null) {
                     continue;
                 }
@@ -97,12 +97,12 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
                     continue;
                 }
 
-                success = snapshotCreation(rdsClient, dbInstance, period, date);
+                success = snapshotCreation(region_, rdsClient, dbInstance, period, date);
                 if (!success) {
                     continue;
                 }
 
-                snapshotDeletion(rdsClient, dbInstance, period, keep);
+                snapshotDeletion(region_, rdsClient, dbInstance, period, keep);
 
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error in RDSSnapshotDBInstanceTime workflow\", stacktrace=\""
@@ -134,14 +134,15 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
         return rdsClient;
     }
 
-    public JSONObject getIntTagValue(AmazonRDSClient amazonRDSClient, DBInstance dbInstance) {
+    public JSONObject getIntTagValue(Region region, AmazonRDSClient amazonRDSClient, DBInstance dbInstance) {
         if (dbInstance == null) {
             return null;
         }
 
         String arn = String.format("arn:aws:rds:%s:%s:db:%s", region_.getName(), awsAccountId_, dbInstance.getDBInstanceIdentifier());
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        List<Tag> tags = RDSClientMethods.getTags(amazonRDSClient,
+        List<Tag> tags = RDSClientMethods.getTags(region, 
+                amazonRDSClient,
                 listTagsForResourceRequest,
                 ApplicationConfiguration.getAwsCallRetryAttempts(),
                 maxApiRequestsPerSecond_,
@@ -220,7 +221,7 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
         return keep;
     }
 
-    public boolean snapshotCreation(AmazonRDSClient rdsClient, DBInstance dbInstance, String period, Date date) {
+    public boolean snapshotCreation(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance, String period, Date date) {
         if ((date == null) || (rdsClient == null) || (dbInstance == null) || (period == null)) {
             return false;
         }
@@ -242,7 +243,7 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
                 tags = DBInstanceTags_.get(dbInstance);
             } else {
                 String arn = String.format("arn:aws:rds:%s:%s:db:%s", region_.getName(), awsAccountId_, dbInstance.getDBInstanceIdentifier());
-                tags = getResourceTags(rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                tags = getResourceTags(region, rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 DBInstanceTags_.put(dbInstance, tags);
             }
 
@@ -260,7 +261,7 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
             DBSnapshot current_snap;
             try {
                 //createDBSnapshotOfDBInstance(AmazonRDSClient rdsClient, DBInstance dbInstance, Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier
-                current_snap = createDBSnapshotOfDBInstance(rdsClient, dbInstance, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                current_snap = createDBSnapshotOfDBInstance(region, rdsClient, dbInstance, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Info\", Info=\"Creating snapshot from dbInstance\", DBInstance_Identifier=\"" + dbInstance.getDBInstanceIdentifier() + "\", \"dbsnapshot\"=\"" + current_snap.getDBSnapshotIdentifier() + "\"");
             } catch (Exception e) {
                 logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error creating snapshot from dbInstance\", DBInstance_Identifier=\"" + dbInstance.getDBInstanceIdentifier() + "\", stacktrace=\""
@@ -284,7 +285,7 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
 
             try {
                 String arn = String.format("arn:aws:rds:%s:%s:snapshot:%s", region_.getName(), awsAccountId_, current_snap.getDBSnapshotIdentifier());
-                setResourceTags(rdsClient, arn, tags, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                setResourceTags(region, rdsClient, arn, tags, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error adding tags to snapshot\", Snapshot_id=\"" + current_snap.getDBSnapshotIdentifier() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -302,13 +303,13 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
         return true;
     }
 
-    public boolean snapshotDeletion(AmazonRDSClient rdsClient, DBInstance dbInstance, String period, Integer keep) {
+    public boolean snapshotDeletion(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance, String period, Integer keep) {
         if ((keep == null) || (rdsClient == null) || (dbInstance == null) || (period == null)) {
             return false;
         }
 
         try {
-            List<DBSnapshot> del_snapshots = getAllDBSnapshotsOfDBInstance(rdsClient, dbInstance, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<DBSnapshot> del_snapshots = getAllDBSnapshotsOfDBInstance(region, rdsClient, dbInstance, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
 
             List<DBSnapshot> deletelist = new ArrayList();
 
@@ -322,7 +323,7 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
                     tags = DBSnapshotTags_.get(snapshot);
                 } else {
                     String arn = String.format("arn:aws:rds:%s:%s:snapshot:%s", region_.getName(), awsAccountId_, snapshot.getDBSnapshotIdentifier());
-                    tags = getResourceTags(rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    tags = getResourceTags(region, rdsClient, arn, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                     DBSnapshotTags_.put(snapshot, tags);
                 }
 
@@ -360,7 +361,7 @@ public class RDSSnapshotDBInstanceTime extends RDSSubThreadMethods implements Ru
                 try {
                     logger.info("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Info\", Info=\"Deleting snapshot from dbInstance\", DBInstance_Identifier=\"" + sortedDeleteList.get(i).getDBInstanceIdentifier() + "\", \"dbSnapshot\"=\"" + sortedDeleteList.get(i).getDBSnapshotIdentifier() + "\"");
 
-                    deleteDBSnapshot(rdsClient, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    deleteDBSnapshot(region, rdsClient, dbInstance, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
                     logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getDBSnapshotIdentifier() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SnapshotCreationTime extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SnapshotCreationTime.class.getName());
 
     private Boolean isFinished_ = false;
     private AwsAccount awsAccount_ = null;
@@ -62,13 +62,13 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
             AmazonEC2Client ec2Client = connect(region, awsAccount_.getAwsAccessKeyId(), awsAccount_.getAwsSecretKey());
 
             //Add CreationPendings
-            addCreationPending(ec2Client);
+            addCreationPending(region, ec2Client);
 
             //Get all snapshots with creation pending
-            updateCreationPending(ec2Client);
+            updateCreationPending(region, ec2Client);
 
             //Get all snapshots with creation pending
-            addCreationComplete(ec2Client);
+            addCreationComplete(region, ec2Client);
 
             ec2Client.shutdown();
             } catch (Exception e) {
@@ -99,7 +99,7 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
         return ec2Client;
     }
 
-    public void addCreationPending(AmazonEC2Client ec2Client) {
+    public void addCreationPending(Region region, AmazonEC2Client ec2Client) {
         try {
             Filter[] filters = new Filter[1];
             filters[0] = new Filter().withName("status").withValues("pending");
@@ -107,7 +107,8 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
             DescribeSnapshotsRequest describeSnapshotRequest
                     = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters);
             DescribeSnapshotsResult describeSnapshotsResult
-                    = EC2ClientMethods.describeSnapshots(ec2Client, 
+                    = EC2ClientMethods.describeSnapshots(region, 
+                            ec2Client, 
                             describeSnapshotRequest, 
                             numRetries_, 
                             maxApiRequestsPerSecond_, 
@@ -131,7 +132,7 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
         }
     }
 
-    public void updateCreationPending(AmazonEC2Client ec2Client) {
+    public void updateCreationPending(Region region, AmazonEC2Client ec2Client) {
         try {
             Filter[] filters2 = new Filter[1];
             filters2[0] = new Filter().withName("tag-key").withValues("CreationPending");
@@ -139,7 +140,8 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
             DescribeSnapshotsRequest describeSnapshotRequest2
                     = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters2);
             DescribeSnapshotsResult describeSnapshotsResult2
-                    = EC2ClientMethods.describeSnapshots(ec2Client, 
+                    = EC2ClientMethods.describeSnapshots(region,
+                            ec2Client, 
                             describeSnapshotRequest2, 
                             numRetries_, 
                             maxApiRequestsPerSecond_, 
@@ -170,7 +172,7 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
         }
     }
 
-    public void addCreationComplete(AmazonEC2Client ec2Client) {
+    public void addCreationComplete(Region region, AmazonEC2Client ec2Client) {
         try {
             Filter[] filters3 = new Filter[2];
             filters3[0] = new Filter().withName("tag-key").withValues("CreationPending");
@@ -178,7 +180,8 @@ public class SnapshotCreationTime extends EideticSubThreadMethods implements Run
             DescribeSnapshotsRequest describeSnapshotRequest3
                     = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filters3);
             DescribeSnapshotsResult describeSnapshotsResult3
-                    = EC2ClientMethods.describeSnapshots(ec2Client, 
+                    = EC2ClientMethods.describeSnapshots(region, 
+                            ec2Client, 
                             describeSnapshotRequest3, 
                             numRetries_, 
                             maxApiRequestsPerSecond_, 

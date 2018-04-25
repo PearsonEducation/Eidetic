@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorTagChecker extends MonitorMethods implements Runnable, Monitor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorTagChecker.class.getName());
 
     private final AwsAccount awsAccount_;
 

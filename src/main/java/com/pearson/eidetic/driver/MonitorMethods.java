@@ -5,6 +5,7 @@
  */
 package com.pearson.eidetic.driver;
 
+import com.amazonaws.regions.Region;
 import com.amazonaws.services.ec2.AmazonEC2Client;
 import com.amazonaws.services.ec2.model.DescribeSnapshotsRequest;
 import com.amazonaws.services.ec2.model.DescribeSnapshotsResult;
@@ -89,11 +90,10 @@ public class MonitorMethods implements Monitor {
         
     }
     
-    public List<Snapshot> getAllSnapshotsOfVolume(AmazonEC2Client ec2Client, Volume vol,
+    public List<Snapshot> getAllSnapshotsOfVolume(Region region, AmazonEC2Client ec2Client, Volume vol,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
 
         if (ec2Client == null || vol == null) {
-            // logger.error("CAN'T BE NULL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             return new ArrayList<>();
         }
 
@@ -104,7 +104,8 @@ public class MonitorMethods implements Monitor {
         DescribeSnapshotsRequest describeSnapshotsRequest
                 = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filter);
         DescribeSnapshotsResult describeSnapshotsResult
-                = EC2ClientMethods.describeSnapshots(ec2Client,
+                = EC2ClientMethods.describeSnapshots(region,
+                        ec2Client,
                         describeSnapshotsRequest,
                         numRetries,
                         maxApiRequestsPerSecond,

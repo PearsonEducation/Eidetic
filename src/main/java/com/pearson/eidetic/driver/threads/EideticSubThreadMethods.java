@@ -5,6 +5,7 @@
  */
 package com.pearson.eidetic.driver.threads;
 
+import com.amazonaws.regions.Region;
 import com.amazonaws.services.ec2.AmazonEC2Client;
 import com.amazonaws.services.ec2.model.CreateSnapshotRequest;
 import com.amazonaws.services.ec2.model.CreateSnapshotResult;
@@ -38,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EideticSubThreadMethods implements EideticSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(EideticSubThreadMethods.class.getName());
 
     @Override
     public boolean isFinished() {
@@ -46,7 +47,7 @@ public class EideticSubThreadMethods implements EideticSubThread {
     }
 
     @Override
-    public List<Snapshot> getAllSnapshotsOfVolume(AmazonEC2Client ec2Client, Volume vol,
+    public List<Snapshot> getAllSnapshotsOfVolume(Region region, AmazonEC2Client ec2Client, Volume vol,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
 
         if (ec2Client == null || vol == null || numRetries == null || maxApiRequestsPerSecond == null || uniqueAwsAccountIdentifier == null) {
@@ -63,7 +64,8 @@ public class EideticSubThreadMethods implements EideticSubThread {
             DescribeSnapshotsRequest describeSnapshotsRequest
                     = new DescribeSnapshotsRequest().withOwnerIds("self").withFilters(filter);
             DescribeSnapshotsResult describeSnapshotsResult
-                    = EC2ClientMethods.describeSnapshots(ec2Client,
+                    = EC2ClientMethods.describeSnapshots(region,
+                            ec2Client,
                             describeSnapshotsRequest,
                             numRetries,
                             maxApiRequestsPerSecond,
@@ -189,14 +191,15 @@ public class EideticSubThreadMethods implements EideticSubThread {
     }
 
     @Override
-    public Snapshot createSnapshotOfVolume(AmazonEC2Client ec2Client, Volume vol, String description,
+    public Snapshot createSnapshotOfVolume(Region region, AmazonEC2Client ec2Client, Volume vol, String description,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         String volumeId = vol.getVolumeId();
         CreateSnapshotRequest snapshotRequest = new CreateSnapshotRequest(
                 volumeId, description);
         Snapshot snapshot = null;
         try {
-            CreateSnapshotResult result = EC2ClientMethods.createSnapshot(ec2Client,
+            CreateSnapshotResult result = EC2ClientMethods.createSnapshot(region,
+                    ec2Client,
                     snapshotRequest,
                     numRetries,
                     maxApiRequestsPerSecond,
@@ -210,7 +213,7 @@ public class EideticSubThreadMethods implements EideticSubThread {
     }
 
     @Override
-    public Snapshot createSnapshotOfVolume(AmazonEC2Client ec2Client, Volume vol,
+    public Snapshot createSnapshotOfVolume(Region region, AmazonEC2Client ec2Client, Volume vol,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier
     ) {
         String volumeId = vol.getVolumeId();
@@ -220,7 +223,8 @@ public class EideticSubThreadMethods implements EideticSubThread {
 
         Snapshot snapshot = null;
         try {
-            CreateSnapshotResult result = EC2ClientMethods.createSnapshot(ec2Client,
+            CreateSnapshotResult result = EC2ClientMethods.createSnapshot(region,
+                    ec2Client,
                     snapshotRequest,
                     numRetries,
                     maxApiRequestsPerSecond,
@@ -233,12 +237,14 @@ public class EideticSubThreadMethods implements EideticSubThread {
         return snapshot;
     }
 
-    public void deleteSnapshot(AmazonEC2Client ec2Client, Snapshot snapshot,
+    public void deleteSnapshot(Region region, AmazonEC2Client ec2Client, Volume vol, Snapshot snapshot,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         String snapshotId = snapshot.getSnapshotId();
         DeleteSnapshotRequest deleteSnapshotRequest
                 = new DeleteSnapshotRequest().withSnapshotId(snapshotId);
-        EC2ClientMethods.deleteSnapshot(ec2Client,
+        EC2ClientMethods.deleteSnapshot(region,
+                ec2Client,
+                vol,
                 deleteSnapshotRequest,
                 numRetries,
                 maxApiRequestsPerSecond,

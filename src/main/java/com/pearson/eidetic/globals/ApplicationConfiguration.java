@@ -125,6 +125,8 @@ public class ApplicationConfiguration {
             String awsAccountAccessSecretKeyValue = applicationConfiguration_.getString(awsAccountAccessSecretKeyKey, null);
             String awsAccountProhibitRDSCallsKey = "aws_account_prohibit_rds_" + (i + 1);
             Boolean awsAccountProhibitRDSCallsValue = applicationConfiguration_.getBoolean(awsAccountProhibitRDSCallsKey, false);
+            String awsAccountEnableCachingKey = "aws_account_enable_caching_" + (i + 1);
+            Boolean awsAccountEnableCachingValue = applicationConfiguration_.getBoolean(awsAccountEnableCachingKey, false);
             
             if (awsAccountNicknameValue.contains("Eidetic_Default") && awsAccountAccessKeyIdValue == null && awsAccountAccessSecretKeyValue == null) {
                 continue;
@@ -133,8 +135,13 @@ public class ApplicationConfiguration {
             String awsMaxApiRequestsPerSecondKey = "aws_account_max_api_requests_per_second_" + (i + 1);
             int awsMaxApiRequestsPerSecondValue = applicationConfiguration_.getInt(awsMaxApiRequestsPerSecondKey, 100);
 
-            AwsAccount awsAccount = new AwsAccount((i + 1), awsAccountNicknameValue,
-                    awsAccountAccessKeyIdValue, awsAccountAccessSecretKeyValue, awsMaxApiRequestsPerSecondValue, awsAccountProhibitRDSCallsValue);
+            AwsAccount awsAccount = new AwsAccount((i + 1), 
+                    awsAccountNicknameValue,
+                    awsAccountAccessKeyIdValue, 
+                    awsAccountAccessSecretKeyValue, 
+                    awsMaxApiRequestsPerSecondValue, 
+                    awsAccountProhibitRDSCallsValue,
+                    awsAccountEnableCachingValue);
 
             if ((awsAccountAccessKeyIdValue != null) && (awsAccountAccessSecretKeyValue != null)) {
                 awsAccounts_.add(awsAccount);

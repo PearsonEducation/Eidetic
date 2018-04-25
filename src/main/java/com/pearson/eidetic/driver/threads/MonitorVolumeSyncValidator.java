@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorVolumeSyncValidator extends MonitorMethods implements Runnable, Monitor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorVolumeSyncValidator.class.getName());
 
     private final AwsAccount awsAccount_;
 
@@ -190,6 +190,7 @@ public class MonitorVolumeSyncValidator extends MonitorMethods implements Runnab
 
                 localVolumeSyncValidateList_.clear();
                 EideticSubThreads_.clear();
+                Threads.sleepMinutes(20);
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + awsAccount_.getUniqueAwsAccountIdentifier() + "\",Error=\"MonitorSnapshotVolumeNoTimeFailure\", stacktrace=\"" + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
                 Threads.sleepSeconds(10);

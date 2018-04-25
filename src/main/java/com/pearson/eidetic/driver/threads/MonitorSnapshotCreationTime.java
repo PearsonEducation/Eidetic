@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorSnapshotCreationTime extends MonitorMethods implements Runnable, Monitor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorSnapshotCreationTime.class.getName());
 
     private final AwsAccount awsAccount_;
 

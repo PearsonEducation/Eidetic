@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RefreshAwsAccountRDSData implements Runnable {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(RefreshAwsAccountRDSData.class.getName());
 
     private final AwsAccount awsAccount_;
     private final String uniqueAwsAccountIdentifier_;
@@ -178,7 +178,7 @@ public class RefreshAwsAccountRDSData implements Runnable {
                 awsAccount_.replaceDBInstanceNoTime(localDBInstanceNoTime);
                 awsAccount_.replaceDBClusterTime(localDBClusterTime);
                 awsAccount_.replaceDBClusterNoTime(localDBClusterNoTime);
-                Threads.sleepMinutes(5);
+                Threads.sleepMinutes(30);
             } catch (Exception e) {
                 logger.error("awsAccountNickname=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"exception in RefreshAwsAccountRDSData workflow\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -209,7 +209,8 @@ public class RefreshAwsAccountRDSData implements Runnable {
         DescribeDBInstancesRequest describeDBInstancesRequest
                 = new DescribeDBInstancesRequest();
         DescribeDBInstancesResult describeDBInstancesResult
-                = RDSClientMethods.describeDBInstances(rdsClient,
+                = RDSClientMethods.describeDBInstances(region,
+                        rdsClient,
                         describeDBInstancesRequest,
                         numRetries_,
                         maxApiRequestsPerSecond_,
@@ -229,7 +230,8 @@ public class RefreshAwsAccountRDSData implements Runnable {
             describeDBInstancesRequest.setMarker(marker);
 
             describeDBInstancesResult
-                    = RDSClientMethods.describeDBInstances(rdsClient,
+                    = RDSClientMethods.describeDBInstances(region,
+                            rdsClient,
                             describeDBInstancesRequest,
                             ApplicationConfiguration.getAwsCallRetryAttempts(),
                             awsAccount_.getMaxApiRequestsPerSecond(),
@@ -249,7 +251,8 @@ public class RefreshAwsAccountRDSData implements Runnable {
                 try {
                     String arn = String.format("arn:aws:rds:%s:%s:db:%s", region.getName(), awsAccount_.getAwsAccountId(), dbInstance.getDBInstanceIdentifier());
                     ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-                    tags = RDSClientMethods.getTags(rdsClient,
+                    tags = RDSClientMethods.getTags(region,
+                            rdsClient,
                             listTagsForResourceRequest,
                             ApplicationConfiguration.getAwsCallRetryAttempts(),
                             awsAccount_.getMaxApiRequestsPerSecond(),
@@ -312,7 +315,8 @@ public class RefreshAwsAccountRDSData implements Runnable {
         for (DBInstance dbInstance : dbInstances) {
             if (dbInstance.getDBClusterIdentifier() != null) {
                 DescribeDBClustersRequest describeDBClustersRequest = new DescribeDBClustersRequest().withDBClusterIdentifier(dbInstance.getDBClusterIdentifier());
-                DescribeDBClustersResult describeDBClustersResult = RDSClientMethods.describeDBClusters(rdsClient,
+                DescribeDBClustersResult describeDBClustersResult = RDSClientMethods.describeDBClusters(region,
+                        rdsClient,
                         describeDBClustersRequest,
                         ApplicationConfiguration.getAwsCallRetryAttempts(),
                         maxApiRequestsPerSecond_,
@@ -323,7 +327,8 @@ public class RefreshAwsAccountRDSData implements Runnable {
                 while (marker != null) {
                     describeDBClustersRequest.setMarker(marker);
 
-                    describeDBClustersResult = RDSClientMethods.describeDBClusters(rdsClient,
+                    describeDBClustersResult = RDSClientMethods.describeDBClusters(region,
+                            rdsClient,
                             describeDBClustersRequest,
                             ApplicationConfiguration.getAwsCallRetryAttempts(),
                             awsAccount_.getMaxApiRequestsPerSecond(),
@@ -350,7 +355,8 @@ public class RefreshAwsAccountRDSData implements Runnable {
         Threads.sleepMilliseconds(80);
         String arn = String.format("arn:aws:rds:%s:%s:db:%s", region.getName(), awsAccount_.getAwsAccountId(), dbInstance.getDBInstanceIdentifier());
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        tags = RDSClientMethods.getTags(rdsClient,
+        tags = RDSClientMethods.getTags(region,
+                rdsClient,
                 listTagsForResourceRequest,
                 ApplicationConfiguration.getAwsCallRetryAttempts(),
                 awsAccount_.getMaxApiRequestsPerSecond(),
@@ -385,7 +391,8 @@ public class RefreshAwsAccountRDSData implements Runnable {
 
         String arn = String.format("arn:aws:rds:%s:%s:cluster:%s", region.getName(), awsAccount_.getAwsAccountId(), dbCluster.getDBClusterIdentifier());
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        tags = RDSClientMethods.getTags(rdsClient,
+        tags = RDSClientMethods.getTags(region,
+                rdsClient,
                 listTagsForResourceRequest,
                 ApplicationConfiguration.getAwsCallRetryAttempts(),
                 awsAccount_.getMaxApiRequestsPerSecond(),

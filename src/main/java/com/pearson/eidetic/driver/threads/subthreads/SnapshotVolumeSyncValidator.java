@@ -24,11 +24,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import javafx.util.Pair;
 import org.apache.commons.lang3.tuple.MutableTriple;
-import org.apache.commons.lang3.tuple.Triple;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
@@ -40,7 +37,7 @@ import org.slf4j.LoggerFactory;
  */
 public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods implements Runnable, EideticSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SnapshotVolumeSyncValidator.class.getName());
 
     private Boolean isFinished_ = false;
     private final String awsAccessKeyId_;
@@ -138,7 +135,7 @@ public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods impleme
             try {
                 ArrayList<MutableTriple<Volume, Integer, Integer>> myList = validateCluster_.get(cluster);
 
-                Boolean snapshotCluster = false;
+                Boolean snapshotCluster = true;
                 Integer min = Integer.MAX_VALUE;
                 for (MutableTriple trip : myList) {
                     if (((Integer) trip.getMiddle()) < min) {
@@ -148,8 +145,9 @@ public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods impleme
                 
 
                 for (MutableTriple trip : myList) {
-                    if (snapshotDecision(ec2Client, (Volume) trip.getLeft(), min)) {
-                        snapshotCluster = true;
+                    Threads.sleepMilliseconds(500);
+                    if (!snapshotDecision(region_, ec2Client, (Volume) trip.getLeft(), min)) {
+                        snapshotCluster = false;
                     }
                 }
 
@@ -297,13 +295,13 @@ public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods impleme
 
     }
 
-    public boolean snapshotDecision(AmazonEC2Client ec2Client, Volume vol, Integer createAfter) {
+    public boolean snapshotDecision(Region region, AmazonEC2Client ec2Client, Volume vol, Integer createAfter) {
         if ((ec2Client == null) || (vol == null) || (createAfter == null)) {
             return false;
         }
         try {
 
-            List<Snapshot> int_snapshots = getAllSnapshotsOfVolume(ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<Snapshot> int_snapshots = getAllSnapshotsOfVolume(region, ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
 
             List<Snapshot> comparelist = new ArrayList();
 
@@ -333,7 +331,7 @@ public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods impleme
         return true;
     }
 
-    public boolean snapshotCreation(AmazonEC2Client ec2Client, Volume vol, Date date) {
+    public boolean snapshotCreation(Region region, AmazonEC2Client ec2Client, Volume vol, Date date) {
         if ((date == null) || (ec2Client == null) || (vol == null)) {
             return false;
         }
@@ -354,7 +352,7 @@ public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods impleme
 
             Snapshot current_snap;
             try {
-                current_snap = createSnapshotOfVolume(ec2Client, vol, description, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                current_snap = createSnapshotOfVolume(region, ec2Client, vol, description, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
             } catch (Exception e) {
                 logger.error("awsAccountId=\"" + uniqueAwsAccountIdentifier_ + "\",Event=Error, Error=\"Malformed Eidetic Tag\", Volume_id=\"" + vol.getVolumeId() + "\", stacktrace=\""
                         + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");
@@ -378,13 +376,13 @@ public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods impleme
         return true;
     }
 
-    public boolean snapshotDeletion(AmazonEC2Client ec2Client, Volume vol, Integer keep) {
+    public boolean snapshotDeletion(Region region, AmazonEC2Client ec2Client, Volume vol, Integer keep) {
         if ((keep == null) || (ec2Client == null) || (vol == null)) {
             return false;
         }
 
         try {
-            List<Snapshot> del_snapshots = getAllSnapshotsOfVolume(ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+            List<Snapshot> del_snapshots = getAllSnapshotsOfVolume(region, ec2Client, vol, numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
 
             List<Snapshot> deletelist = new ArrayList();
 
@@ -395,7 +393,7 @@ public class SnapshotVolumeSyncValidator extends EideticSubThreadMethods impleme
 
             for (int i : range(0, delta - 1)) {
                 try {
-                    deleteSnapshot(ec2Client, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
+                    deleteSnapshot(region, ec2Client, vol, sortedDeleteList.get(i), numRetries_, maxApiRequestsPerSecond_, uniqueAwsAccountIdentifier_);
                 } catch (Exception e) {
                     logger.error("awsAccountId=\"" + uniqueAwsAccountIdentifier_ + "\",Event=\"Error\", Error=\"error deleting snapshot\", Snapshot_id=\"" + sortedDeleteList.get(i).getSnapshotId() + "\", stacktrace=\""
                             + e.toString() + System.lineSeparator() + StackTrace.getStringFromStackTrace(e) + "\"");

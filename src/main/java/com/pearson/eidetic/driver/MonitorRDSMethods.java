@@ -5,6 +5,7 @@
  */
 package com.pearson.eidetic.driver;
 
+import com.amazonaws.regions.Region;
 import com.amazonaws.services.rds.AmazonRDSClient;
 import com.amazonaws.services.rds.model.DBCluster;
 import com.amazonaws.services.rds.model.DBClusterSnapshot;
@@ -164,7 +165,7 @@ public class MonitorRDSMethods implements MonitorRDS {
         return returnList;
     }
 
-    public List<DBSnapshot> getAllDBSnapshotsOfDBInstance(AmazonRDSClient rdsClient, DBInstance dbInstance,
+    public List<DBSnapshot> getAllDBSnapshotsOfDBInstance(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
 
         if (rdsClient == null || dbInstance == null) {
@@ -176,7 +177,8 @@ public class MonitorRDSMethods implements MonitorRDS {
         DescribeDBSnapshotsRequest describeDBSnapshotsRequest
                 = new DescribeDBSnapshotsRequest().withDBInstanceIdentifier(instanceID);
         DescribeDBSnapshotsResult describeDBSnapshotsResult
-                = RDSClientMethods.describeDBSnapshots(rdsClient,
+                = RDSClientMethods.describeDBSnapshots(region,
+                        rdsClient,
                         describeDBSnapshotsRequest,
                         numRetries,
                         maxApiRequestsPerSecond,
@@ -197,7 +199,7 @@ public class MonitorRDSMethods implements MonitorRDS {
         return snapshots;
     }
 
-    public List<DBClusterSnapshot> getAllDBClusterSnapshotsOfDBCluster(AmazonRDSClient rdsClient, DBCluster dbCluster,
+    public List<DBClusterSnapshot> getAllDBClusterSnapshotsOfDBCluster(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
 
         if (rdsClient == null || dbCluster == null) {
@@ -209,7 +211,8 @@ public class MonitorRDSMethods implements MonitorRDS {
         DescribeDBClusterSnapshotsRequest describeDBClusterSnapshotsRequest
                 = new DescribeDBClusterSnapshotsRequest().withDBClusterIdentifier(clusterID);
         DescribeDBClusterSnapshotsResult describeDBClusterSnapshotsResult
-                = RDSClientMethods.describeDBClusterSnapshots(rdsClient,
+                = RDSClientMethods.describeDBClusterSnapshots(region,
+                        rdsClient,
                         describeDBClusterSnapshotsRequest,
                         numRetries,
                         maxApiRequestsPerSecond,

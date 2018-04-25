@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnable, Monitor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorSnapshotVolumeTime.class.getName());
 
     private final AwsAccount awsAccount_;
 
@@ -401,7 +401,7 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
                 }
 
                 Boolean success;
-                success = snapshotDecision(ec2Client, vol, period);
+                success = snapshotDecision(region, ec2Client, vol, period);
                 //Success true means we need to take a snapshot, which it can handle l8r
                 //Success false means we need to add to hashset
                 if (!success) {
@@ -518,13 +518,15 @@ public class MonitorSnapshotVolumeTime extends MonitorMethods implements Runnabl
         return keep;
     }
 
-    public boolean snapshotDecision(AmazonEC2Client ec2Client, Volume vol, String period) {
+    public boolean snapshotDecision(Region region, AmazonEC2Client ec2Client, Volume vol, String period) {
         if ((ec2Client == null) || (vol == null) || (period == null)) {
             return false;
         }
         try {
 
-            List<Snapshot> int_snapshots = getAllSnapshotsOfVolume(ec2Client, vol,
+            List<Snapshot> int_snapshots = getAllSnapshotsOfVolume(region,
+                    ec2Client, 
+                    vol,
                     ApplicationConfiguration.getAwsCallRetryAttempts(),
                     awsAccount_.getMaxApiRequestsPerSecond(),
                     awsAccount_.getUniqueAwsAccountIdentifier());

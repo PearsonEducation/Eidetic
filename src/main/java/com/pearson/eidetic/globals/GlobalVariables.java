@@ -6,6 +6,7 @@
 package com.pearson.eidetic.globals;
 
 import com.amazonaws.regions.Region;
+import com.pearson.eidetic.aws.AwsAccount;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,5 +26,6 @@ public class GlobalVariables {
     
     // k=unique identifer per 'aws account', v=request count
     public final static ConcurrentHashMap<String,AtomicLong> apiRequestCountersByAwsAccount = new ConcurrentHashMap<>();
+    
 
 }

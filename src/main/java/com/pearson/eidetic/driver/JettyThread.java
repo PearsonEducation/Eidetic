@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  */
 public class JettyThread implements Runnable {
 
-    private static final Logger logger = LoggerFactory.getLogger(Driver.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(JettyThread.class.getName());
     private static JettySync jettySync_;
 
     @Override

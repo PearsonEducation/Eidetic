@@ -5,6 +5,7 @@
  */
 package com.pearson.eidetic.driver.threads.rds;
 
+import com.amazonaws.regions.Region;
 import com.amazonaws.services.rds.AmazonRDSClient;
 import com.amazonaws.services.rds.model.AddTagsToResourceRequest;
 import com.amazonaws.services.rds.model.CreateDBClusterSnapshotRequest;
@@ -22,7 +23,6 @@ import com.amazonaws.services.rds.model.DescribeDBSnapshotsResult;
 import com.amazonaws.services.rds.model.ListTagsForResourceRequest;
 import com.amazonaws.services.rds.model.Tag;
 import com.pearson.eidetic.aws.RDSClientMethods;
-import com.pearson.eidetic.globals.ApplicationConfiguration;
 import com.pearson.eidetic.utilities.StackTrace;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
@@ -45,7 +46,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RDSSubThreadMethods implements RDSSubThread {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(RDSSubThreadMethods.class.getName());
 
     @Override
     public boolean isFinished() {
@@ -53,7 +54,7 @@ public class RDSSubThreadMethods implements RDSSubThread {
     }
 
     @Override
-    public List<DBSnapshot> getAllDBSnapshotsOfDBInstance(AmazonRDSClient rdsClient, DBInstance dbInstance,
+    public List<DBSnapshot> getAllDBSnapshotsOfDBInstance(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
 
         if (rdsClient == null || dbInstance == null) {
@@ -68,7 +69,8 @@ public class RDSSubThreadMethods implements RDSSubThread {
             DescribeDBSnapshotsRequest describeDBSnapshotsRequest
                     = new DescribeDBSnapshotsRequest().withDBInstanceIdentifier(instanceID);
             DescribeDBSnapshotsResult describeSnapshotsResult
-                    = RDSClientMethods.describeDBSnapshots(rdsClient,
+                    = RDSClientMethods.describeDBSnapshots(region,
+                            rdsClient,
                             describeDBSnapshotsRequest,
                             numRetries,
                             maxApiRequestsPerSecond,
@@ -81,7 +83,8 @@ public class RDSSubThreadMethods implements RDSSubThread {
                 describeDBSnapshotsRequest.setMarker(marker);
 
                 describeSnapshotsResult
-                        = RDSClientMethods.describeDBSnapshots(rdsClient,
+                        = RDSClientMethods.describeDBSnapshots(region,
+                                rdsClient,
                                 describeDBSnapshotsRequest,
                                 numRetries,
                                 maxApiRequestsPerSecond,
@@ -109,7 +112,7 @@ public class RDSSubThreadMethods implements RDSSubThread {
     }
 
     @Override
-    public List<DBClusterSnapshot> getAllDBClusterSnapshotsOfDBCluster(AmazonRDSClient rdsClient, DBCluster dbCluster,
+    public List<DBClusterSnapshot> getAllDBClusterSnapshotsOfDBCluster(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
 
         if (rdsClient == null || dbCluster == null) {
@@ -124,7 +127,8 @@ public class RDSSubThreadMethods implements RDSSubThread {
             DescribeDBClusterSnapshotsRequest describeDBClusterSnapshotsRequest
                     = new DescribeDBClusterSnapshotsRequest().withDBClusterIdentifier(dbClusterID);
             DescribeDBClusterSnapshotsResult describeClusterSnapshotsResult
-                    = RDSClientMethods.describeDBClusterSnapshots(rdsClient,
+                    = RDSClientMethods.describeDBClusterSnapshots(region,
+                            rdsClient,
                             describeDBClusterSnapshotsRequest,
                             numRetries,
                             maxApiRequestsPerSecond,
@@ -137,7 +141,8 @@ public class RDSSubThreadMethods implements RDSSubThread {
                 describeDBClusterSnapshotsRequest.setMarker(marker);
 
                 describeClusterSnapshotsResult
-                        = RDSClientMethods.describeDBClusterSnapshots(rdsClient,
+                        = RDSClientMethods.describeDBClusterSnapshots(region,
+                                rdsClient,
                                 describeDBClusterSnapshotsRequest,
                                 numRetries,
                                 maxApiRequestsPerSecond,
@@ -164,21 +169,35 @@ public class RDSSubThreadMethods implements RDSSubThread {
         return snapshots;
     }
 
-    public Collection<Tag> getResourceTags(AmazonRDSClient rdsClient, String arn, Integer numRetries,
+    @Override
+    public Collection<Tag> getResourceTags(Region region, AmazonRDSClient rdsClient, String arn, Integer numRetries,
             Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         ListTagsForResourceRequest listTagsForResourceRequest = new ListTagsForResourceRequest().withResourceName(arn);
-        return RDSClientMethods.getTags(rdsClient,
+        return RDSClientMethods.getTags(region,
+                rdsClient,
                 listTagsForResourceRequest,
                 numRetries,
                 maxApiRequestsPerSecond,
                 uniqueAwsAccountIdentifier).getTagList();
     }
 
-    public void setResourceTags(AmazonRDSClient rdsClient, String arn, Collection<Tag> tags,
+    @Override
+    public void setResourceTags(Region region, AmazonRDSClient rdsClient, String arn, Collection<Tag> tags,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         AddTagsToResourceRequest addTagsToResourceRequest = new AddTagsToResourceRequest().withResourceName(arn);
+        HashSet<String> tempset = new HashSet<>();
+        HashSet<Tag> temptagset = new HashSet<>();
+        for (Tag tag : tags) {
+            if (!tempset.contains(tag.getKey())) {
+                tempset.add(tag.getKey());
+                temptagset.add(tag);
+            }
+        }
+        tags.clear();
+        tags.addAll(temptagset);
         addTagsToResourceRequest.setTags(tags);
-        RDSClientMethods.createTags(rdsClient,
+        RDSClientMethods.createTags(region,
+                rdsClient,
                 addTagsToResourceRequest,
                 numRetries,
                 maxApiRequestsPerSecond,
@@ -294,7 +313,7 @@ public class RDSSubThreadMethods implements RDSSubThread {
     }
 
     @Override
-    public DBSnapshot createDBSnapshotOfDBInstance(AmazonRDSClient rdsClient, DBInstance dbInstance,
+    public DBSnapshot createDBSnapshotOfDBInstance(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         String dbInstanceId = dbInstance.getDBInstanceIdentifier();
 
@@ -304,7 +323,8 @@ public class RDSSubThreadMethods implements RDSSubThread {
 
         DBSnapshot snapshot = null;
         try {
-            snapshot = RDSClientMethods.createDBSnapshot(rdsClient,
+            snapshot = RDSClientMethods.createDBSnapshot(region,
+                    rdsClient,
                     createDBSnapshotRequest,
                     numRetries,
                     maxApiRequestsPerSecond,
@@ -317,7 +337,7 @@ public class RDSSubThreadMethods implements RDSSubThread {
     }
 
     @Override
-    public DBClusterSnapshot createDBClusterSnapshotOfDBCluster(AmazonRDSClient rdsClient, DBCluster dbCluster,
+    public DBClusterSnapshot createDBClusterSnapshotOfDBCluster(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier
     ) {
         String dbClusterId = dbCluster.getDBClusterIdentifier();
@@ -326,7 +346,8 @@ public class RDSSubThreadMethods implements RDSSubThread {
         CreateDBClusterSnapshotRequest createDBClusterSnapshotRequest = new CreateDBClusterSnapshotRequest().withDBClusterIdentifier(dbClusterId).withDBClusterSnapshotIdentifier("Eidetic-" + dbClusterId + "-" + dateFormat.format(date));
         DBClusterSnapshot snapshot = null;
         try {
-            snapshot = RDSClientMethods.createDBClusterSnapshot(rdsClient,
+            snapshot = RDSClientMethods.createDBClusterSnapshot(region,
+                    rdsClient,
                     createDBClusterSnapshotRequest,
                     numRetries,
                     maxApiRequestsPerSecond,
@@ -338,24 +359,28 @@ public class RDSSubThreadMethods implements RDSSubThread {
         return snapshot;
     }
 
-    public void deleteDBSnapshot(AmazonRDSClient rdsClient, DBSnapshot dbSnapshot,
+    public void deleteDBSnapshot(Region region, AmazonRDSClient rdsClient, DBInstance dbInstance, DBSnapshot dbSnapshot,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         String dbSnapshotId = dbSnapshot.getDBSnapshotIdentifier();
         DeleteDBSnapshotRequest deleteDBSnapshotRequest
                 = new DeleteDBSnapshotRequest().withDBSnapshotIdentifier(dbSnapshotId);
-        RDSClientMethods.deleteDBSnapshot(rdsClient,
+        RDSClientMethods.deleteDBSnapshot(region,
+                rdsClient,
+                dbInstance,
                 deleteDBSnapshotRequest,
                 numRetries,
                 maxApiRequestsPerSecond,
                 uniqueAwsAccountIdentifier);
     }
 
-    public void deleteDBClusterSnapshot(AmazonRDSClient rdsClient, DBClusterSnapshot dbClusterSnapshot,
+    public void deleteDBClusterSnapshot(Region region, AmazonRDSClient rdsClient, DBCluster dbCluster, DBClusterSnapshot dbClusterSnapshot,
             Integer numRetries, Integer maxApiRequestsPerSecond, String uniqueAwsAccountIdentifier) {
         String dbClusterSnapshotId = dbClusterSnapshot.getDBClusterSnapshotIdentifier();
         DeleteDBClusterSnapshotRequest deleteDBClusterSnapshotRequest
                 = new DeleteDBClusterSnapshotRequest().withDBClusterSnapshotIdentifier(dbClusterSnapshotId);
-        RDSClientMethods.deleteDBClusterSnapshot(rdsClient,
+        RDSClientMethods.deleteDBClusterSnapshot(region,
+                rdsClient,
+                dbCluster,
                 deleteDBClusterSnapshotRequest,
                 numRetries,
                 maxApiRequestsPerSecond,

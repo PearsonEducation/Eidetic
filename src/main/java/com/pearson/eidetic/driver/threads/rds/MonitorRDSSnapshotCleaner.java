@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MonitorRDSSnapshotCleaner extends MonitorRDSMethods implements Runnable, MonitorRDS {
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfiguration.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(MonitorRDSSnapshotCleaner.class.getName());
 
     private final AwsAccount awsAccount_;
 
