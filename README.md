@@ -44,7 +44,7 @@ where:
 
   
   
-Optional: add extra parameter, "gRunAt" to "day" interval. 
+Optional: add extra parameter, "RunAt" to "day" interval value selection. 
 
 `{ "CreateSnapshot" : { "Interval" : "day", "Retain" : "y",  "RunAt" : "z"} }`
 
