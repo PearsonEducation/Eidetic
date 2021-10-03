@@ -7,14 +7,6 @@ assignees: ''
 
 ---
 
-# Template Description
-
----
-name: User story template
-about: This template provides a basic structure for user story issues.
-
----
-
 # User story
 As a <Insert_Specific_User>, I want to <Insert_Functionality>, so I can <Insert_Desired_Result>.
 
