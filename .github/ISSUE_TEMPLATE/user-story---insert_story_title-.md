@@ -1,7 +1,7 @@
 ---
-name: 'User Story: <Insert_Story_Title>'
-about: Describe the proposed story.
-title: ''
+name: User Story
+about: <describe_story>
+title: <user_story_title>
 labels: ''
 assignees: ''
 
