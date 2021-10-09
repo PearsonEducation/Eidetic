@@ -1,6 +1,6 @@
 ---
 name: 'Bug report'
-about: Create a report to help us improve
+about: <help_us_improve>
 title: '<bug_report_title>'
 labels: ''
 assignees: ''
