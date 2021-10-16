@@ -7,6 +7,9 @@ assignees: ''
 
 ---
 
+# Linked Initiative
+<Every_User_Story_Must_Have_An_Initiative>
+
 # User story
 As a <Insert_Specific_User>, I want to <Insert_Functionality>, so I can <Insert_Desired_Result>.
 
