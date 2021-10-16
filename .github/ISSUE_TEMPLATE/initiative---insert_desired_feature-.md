@@ -12,8 +12,8 @@ assignees: ''
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
 
 # Acceptance criteria
+_Solutions_
 - [ ] <describe_solutions>
-- [ ] <share_potential_alternatives>
 
 # Alternatives
 **Describe alternatives you've considered**
